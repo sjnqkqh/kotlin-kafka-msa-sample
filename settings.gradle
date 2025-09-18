@@ -1,1 +1,2 @@
-rootProject.name = 'kotlin-kafka-msa-sample'
+rootProject.name = "kotlin-kafka-msa-sample"
+include("post-server", "user-server")
