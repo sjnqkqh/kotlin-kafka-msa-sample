@@ -10,7 +10,7 @@ group = 'msa'
 version = '0.0.1-SNAPSHOT'
 description = 'kotlin-kafka-msa-sample'
 
-subprojects {
+allprojects {
     apply plugin: 'org.jetbrains.kotlin.jvm'
     apply plugin: 'org.jetbrains.kotlin.plugin.spring'
     apply plugin: 'org.jetbrains.kotlin.plugin.jpa'
