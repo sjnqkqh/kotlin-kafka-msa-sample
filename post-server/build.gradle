@@ -1,6 +1,7 @@
 // 플러그인은 루트 subprojects{}에서 이미 적용됨
 tasks.named('bootJar') {
     archiveBaseName = "post-server"
+    mainClass = "msa.post.PostServerApplication"
 }
 tasks.named('jar') { enabled = false }
 tasks.register("prepareKotlinBuildScriptModel"){}

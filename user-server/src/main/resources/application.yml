@@ -1,9 +1,12 @@
 spring:
+  docker:
+    compose:
+      enabled: false
   application:
     name: user-service
 
   datasource:
-    url: jdbc:mysql://localhost:3306/mydatabase
+    url: jdbc:mysql://localhost:3308/user_db
     username: myuser
     password: secret
     driver-class-name: com.mysql.cj.jdbc.Driver
