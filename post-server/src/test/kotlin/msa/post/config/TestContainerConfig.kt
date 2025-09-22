@@ -8,7 +8,6 @@ import org.testcontainers.containers.MySQLContainer
 import org.testcontainers.junit.jupiter.Container
 import org.testcontainers.junit.jupiter.Testcontainers
 import org.testcontainers.kafka.ConfluentKafkaContainer
-import org.testcontainers.utility.DockerImageName
 import java.time.Duration
 
 /**
@@ -27,13 +26,15 @@ abstract class TestContainerConfig {
             .withUsername("test_user")
             .withPassword("test_password")
             .withEnv("MYSQL_ROOT_PASSWORD", "root_password")
-            .withStartupTimeout(Duration.ofMinutes(1))
-            .withConnectTimeoutSeconds(60)
+            .withStartupTimeout(Duration.ofMinutes(3))
+            .withConnectTimeoutSeconds(20)
+            .withReuse(true)
 
         @Container
         @JvmStatic
         val redisContainer = GenericContainer("redis:7")
             .withExposedPorts(6379)
+            .withReuse(true)
 
         @Container
         @JvmStatic
@@ -42,13 +43,10 @@ abstract class TestContainerConfig {
         @JvmStatic
         @DynamicPropertySource
         fun configureTestProperties(registry: DynamicPropertyRegistry) {
-//            mysqlContainer.start()
-//            redisContainer.start()
-//            kafkaContainer.start()
             registry.add("spring.datasource.url") { mysqlContainer.jdbcUrl }
             registry.add("spring.datasource.username") { mysqlContainer.username }
             registry.add("spring.datasource.password") { mysqlContainer.password }
-            registry.add("spring.datasource.driver-class-name") { "org.testcontainers.jdbc.ContainerDatabaseDriver" }
+            registry.add("spring.datasource.driver-class-name") { "com.mysql.cj.jdbc.Driver" }
 
             registry.add("spring.data.redis.host") { redisContainer.host }
             registry.add("spring.data.redis.port") { redisContainer.getMappedPort(6379) }

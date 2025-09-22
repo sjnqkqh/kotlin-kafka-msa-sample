@@ -19,7 +19,6 @@ import org.testcontainers.junit.jupiter.Testcontainers
     webEnvironment = SpringBootTest.WebEnvironment.NONE
 )
 @ActiveProfiles("test")
-@Testcontainers
 class PostRedisServiceTest : TestContainerConfig() {
 
     @Autowired
