@@ -15,9 +15,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/api/posts")
 class PostController(
     private val postService: PostService,
-    private val redisTemplate: RedisTemplate<String, Any>
 ) {
-    private val ops = redisTemplate.opsForValue()
 
     @GetMapping("")
     fun getPostsByPage(

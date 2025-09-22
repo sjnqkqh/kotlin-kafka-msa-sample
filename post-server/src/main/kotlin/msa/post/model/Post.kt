@@ -12,7 +12,7 @@ import java.time.LocalDateTime
 
 @Entity
 @Table(name = "posts")
-class Post(
+data class Post(
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
