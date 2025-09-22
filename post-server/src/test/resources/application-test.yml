@@ -1,0 +1,57 @@
+spring.config.activate.on-profile: test
+
+
+# 테스트용 데이터베이스 설정 (Testcontainers가 동적으로 설정)
+# 아래 설정들은 TestContainerConfig의 @DynamicPropertySource에서 동적으로 덮어쓰기됨
+spring:
+  application:
+    name: post-service-test
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: false
+        dialect: org.hibernate.dialect.MySQL8Dialect
+        hbm2ddl:
+          auto: create-drop
+        jdbc:
+          use_streams_for_binary: false
+    show-sql: false
+    open-in-view: false
+
+  # Redis 테스트 설정
+  data:
+    redis:
+
+      host: ${spring.data.redis.host}
+      port: ${spring.data.redis.port}
+    jdbc:
+      dialect: mysql
+
+  # Kafka 테스트 설정
+  kafka:
+    bootstrap-servers: ${spring.kafka.bootstrap-servers}
+    consumer:
+      group-id: post-service-test-group
+      auto-offset-reset: earliest
+      enable-auto-commit: true
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+# 테스트용 서버 포트 (랜덤 포트 사용)
+server:
+  port: 0
+
+logging:
+  level:
+    org.springframework.kafka: WARN
+    org.apache.kafka: WARN
+    org.hibernate: WARN
+    org.testcontainers: WARN
+    msa.post: DEBUG
+
+  pattern:
+    console: "%d{HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"

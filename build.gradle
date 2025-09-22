@@ -33,6 +33,10 @@ allprojects {
         mavenCentral()
     }
 
+    ext {
+        testcontainersVersion = '1.19.2'
+    }
+
     dependencies {
         implementation 'org.springframework.boot:spring-boot-starter-web'
         implementation 'org.springframework.boot:spring-boot-starter-validation'
@@ -43,7 +47,7 @@ allprojects {
         implementation 'com.fasterxml.jackson.module:jackson-module-kotlin'
         implementation 'org.jetbrains.kotlin:kotlin-reflect'
 
-        developmentOnly 'org.springframework.boot:spring-boot-devtools'
+        developmentOnly 'org.springframework.' + 'boot' + ':spring-boot-devtools'
 
         runtimeOnly 'com.mysql:mysql-connector-j'
 
@@ -55,8 +59,11 @@ allprojects {
         testImplementation 'org.springframework.security:spring-security-test'
         testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-        testImplementation 'org.testcontainers:junit-jupiter:1.19.0'
-        testImplementation 'org.testcontainers:testcontainers:1.19.0'
+        testImplementation "org.testcontainers:testcontainers:${testcontainersVersion}"
+        testImplementation "org.testcontainers:junit-jupiter:${testcontainersVersion}"
+        testImplementation 'org.testcontainers:junit-jupiter'
+        testImplementation 'org.testcontainers:mysql'
+        testImplementation 'org.testcontainers:kafka'
     }
 
     kotlin {

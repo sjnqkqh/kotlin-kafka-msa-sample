@@ -20,7 +20,7 @@ import org.testcontainers.junit.jupiter.Testcontainers
 )
 @ActiveProfiles("test")
 @Testcontainers
-class PostRedisServiceTest : TestContainerConfig() {
+class PostRedisServiceTestCopy : TestContainerConfig() {
 
     @Autowired
     private lateinit var postRedisService: PostRedisService
