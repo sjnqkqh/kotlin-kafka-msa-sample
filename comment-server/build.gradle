@@ -1,0 +1,6 @@
+tasks.named('bootJar') {
+    archiveBaseName = "comment-server"
+    mainClass = "msa.comment.PostServerApplication"
+}
+tasks.named('jar') { enabled = false }
+tasks.register("prepareKotlinBuildScriptModel"){}
