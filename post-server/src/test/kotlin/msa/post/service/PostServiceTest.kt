@@ -5,6 +5,7 @@ import msa.post.model.Post
 import msa.post.repository.PostRepository
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
 import org.mockito.Mockito.`when`
@@ -35,7 +36,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `Redis에 충분한 데이터가 있으면 Redis에서 페이지 반환`() {
+    @DisplayName("Redis에 충분한 데이터가 있으면 Redis에서 페이지 반환")
+    fun shouldReturnPageFromRedisWhenSufficientDataExists() {
         // given
         val pageable = PageRequest.of(0, 2)
         val redisPosts = listOf(
@@ -58,7 +60,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `Redis에 데이터가 부족하면 DB에서 페이지 반환`() {
+    @DisplayName("Redis에 데이터가 부족하면 DB에서 페이지 반환")
+    fun shouldReturnPageFromDatabaseWhenRedisDataInsufficient() {
         // given
         val pageable = PageRequest.of(0, 3)
         val redisPosts = listOf(createPost(1L, "Redis Post"))
@@ -82,7 +85,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `캐시에 있는 게시물 조회 시 Redis에서 반환`() {
+    @DisplayName("캐시에 있는 게시물 조회 시 Redis에서 반환")
+    fun shouldReturnPostFromCacheWhenPostExistsInCache() {
         // given
         val postId = 1L
         val cachedPost = createPost(postId, "Cached Post")
@@ -98,7 +102,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `캐시에 없는 게시물 조회 시 DB에서 조회`() {
+    @DisplayName("캐시에 없는 게시물 조회 시 DB에서 조회")
+    fun shouldReturnPostFromDatabaseWhenNotInCache() {
         // given
         val postId = 1L
         val dbPost = createPost(postId, "DB Post")
@@ -115,7 +120,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `존재하지 않는 게시물 조회 시 예외 발생`() {
+    @DisplayName("존재하지 않는 게시물 조회 시 예외 발생")
+    fun shouldThrowExceptionWhenPostNotFound() {
         // given
         val postId = 999L
 
@@ -131,7 +137,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `게시물 생성 시 DB 저장 후 Redis 캐시에 등록`() {
+    @DisplayName("게시물 생성 시 DB 저장 후 Redis 캐시에 등록")
+    fun shouldSavePostToDatabaseAndCacheToRedisWhenCreating() {
         // given
         val request = PostCreateRequest("새로운 게시글", "게시글 내용")
         val newPost = Post(title = "새로운 게시글", content = "게시글 내용")
@@ -151,7 +158,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `게시물 삭제 시 존재하는 게시물은 DB와 Redis에서 모두 제거`() {
+    @DisplayName("게시물 삭제 시 존재하는 게시물은 DB와 Redis에서 모두 제거")
+    fun shouldDeletePostFromBothDatabaseAndRedisWhenPostExists() {
         // given
         val postId = 1L
 
@@ -165,7 +173,8 @@ class PostServiceTest {
     }
 
     @Test
-    fun `게시물 삭제 시 존재하지 않는 게시물은 예외 발생`() {
+    @DisplayName("게시물 삭제 시 존재하지 않는 게시물은 예외 발생")
+    fun shouldThrowExceptionWhenDeletingNonExistentPost() {
         // given
         val postId = 999L
 
