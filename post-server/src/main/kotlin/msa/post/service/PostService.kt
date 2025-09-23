@@ -5,7 +5,6 @@ import msa.post.dto.PostCreateRequest
 import msa.post.dto.PostResponse
 import msa.post.model.Post
 import msa.post.repository.PostRepository
-import org.springframework.data.domain.Page
 import org.springframework.data.domain.Pageable
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
@@ -15,7 +14,8 @@ import java.time.Duration
 @Transactional(readOnly = true)
 class PostService(
     private val postRepository: PostRepository,
-    private val postRedisService: PostRedisService
+    private val postRedisService: PostRedisService,
+    private val postEventPublisher: PostEventPublisher
 ) {
     private val recentPostRemainHours: Long = 12
 
@@ -84,6 +84,9 @@ class PostService(
         postRedisService.addToRecentPosts(savedPost, expireTime)
         postRedisService.cachePost(savedPost)
 
+        // Kafka 이벤트 발행
+        postEventPublisher.publishPostCreated(savedPost)
+
         return PostResponse.fromPost(savedPost)
     }
 
@@ -99,6 +102,9 @@ class PostService(
         postRedisService.removeFromRecentPosts(id)
 
         postRepository.deleteById(id)
+
+        // Kafka 이벤트 발행
+        postEventPublisher.publishPostDeleted(id)
     }
 
 }
