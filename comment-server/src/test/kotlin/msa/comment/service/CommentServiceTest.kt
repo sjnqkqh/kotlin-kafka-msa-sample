@@ -11,13 +11,11 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.transaction.annotation.Transactional
-import org.testcontainers.junit.jupiter.Testcontainers
 
 @SpringBootTest(properties = ["spring.profiles.active=test"])
 @Transactional
-@Testcontainers
 @DisplayName("댓글 서비스 테스트")
-class CommentServiceTest : TestContainerConfig() {
+class CommentServiceTest :TestContainerConfig(){
 
     @Autowired
     private lateinit var commentService: CommentService

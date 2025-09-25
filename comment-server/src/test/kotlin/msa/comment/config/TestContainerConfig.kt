@@ -1,6 +1,5 @@
 package msa.comment.config
 
-import org.springframework.boot.test.context.TestConfiguration
 import org.springframework.test.context.DynamicPropertyRegistry
 import org.springframework.test.context.DynamicPropertySource
 import org.testcontainers.containers.GenericContainer
@@ -14,8 +13,8 @@ import java.time.Duration
  * 통합 테스트 컨테이너 설정
  * MySQL, Redis, Kafka를 모두 관리하는 기본 테스트 인프라 클래스
  */
-@TestConfiguration
 @Testcontainers
+//@TestConfiguration(proxyBeanMethods = false)
 abstract class TestContainerConfig {
     companion object {
 
@@ -28,18 +27,15 @@ abstract class TestContainerConfig {
             .withEnv("MYSQL_ROOT_PASSWORD", "root_password")
             .withStartupTimeout(Duration.ofMinutes(3))
             .withConnectTimeoutSeconds(20)
-            .withReuse(true)
 
         @Container
         @JvmStatic
         val redisContainer = GenericContainer("redis:7")
             .withExposedPorts(6379)
-            .withReuse(true)
 
         @Container
         @JvmStatic
         val kafkaContainer = ConfluentKafkaContainer("confluentinc/cp-kafka:7.4.0")
-            .withReuse(true)
 
         @JvmStatic
         @DynamicPropertySource
