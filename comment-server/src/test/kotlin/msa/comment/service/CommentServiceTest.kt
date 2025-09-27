@@ -1,6 +1,6 @@
 package msa.comment.service
 
-import msa.comment.config.TestContainerConfig
+import msa.comment.config.TestConfig
 import msa.comment.dto.CommentCreateRequest
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.repository.CommentRepository
@@ -10,12 +10,14 @@ import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(properties = ["spring.profiles.active=test"])
+@Import(TestConfig::class)
 @Transactional
 @DisplayName("댓글 서비스 테스트")
-class CommentServiceTest :TestContainerConfig(){
+class CommentServiceTest {
 
     @Autowired
     private lateinit var commentService: CommentService

@@ -1,7 +1,7 @@
 package msa.comment.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
-import msa.comment.config.TestContainerConfig
+import msa.comment.config.TestConfig
 import msa.comment.dto.CommentCreateRequest
 import msa.comment.dto.CommentDeleteRequest
 import msa.comment.dto.CommentUpdateRequest
@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.context.annotation.Import
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*
@@ -19,10 +20,11 @@ import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
 
 @SpringBootTest(properties = ["spring.profiles.active=test"])
+@Import(TestConfig::class)
 @AutoConfigureMockMvc
 @Transactional
 @DisplayName("댓글 API 통합 테스트")
-class CommentIntegrationTest:TestContainerConfig() {
+class CommentIntegrationTest {
 
     @Autowired
     private lateinit var mockMvc: MockMvc
