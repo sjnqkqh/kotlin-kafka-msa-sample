@@ -5,7 +5,6 @@ import msa.post.dto.PostCreateRequest
 import msa.post.dto.PostResponse
 import msa.post.service.PostService
 import org.springframework.data.domain.Pageable
-import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.web.PageableDefault
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
