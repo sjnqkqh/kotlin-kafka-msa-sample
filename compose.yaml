@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   mysql-post:
-    image: mysql:8.4
+    image: mysql:8.0
     environment:
       MYSQL_DATABASE: post_db
       MYSQL_USER: myuser
@@ -11,15 +11,25 @@ services:
     ports:
       - "3307:3306"
 
+  mysql-comment:
+    image: mysql:8.0
+    environment:
+      MYSQL_DATABASE: comment_db
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: secret
+      MYSQL_ROOT_PASSWORD: verysecret
+    ports:
+      - "3308:3306"
+
   mysql-user:
-    image: mysql:8.4
+    image: mysql:8.0
     environment:
       MYSQL_DATABASE: user_db
       MYSQL_USER: myuser
       MYSQL_PASSWORD: secret
       MYSQL_ROOT_PASSWORD: verysecret
     ports:
-      - "3308:3306"
+      - "3309:3306"
 
   redis:
     image: redis:7

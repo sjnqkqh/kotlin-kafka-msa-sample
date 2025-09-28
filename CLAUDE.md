@@ -9,7 +9,7 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
 ### 아키텍처
 
 - **멀티 모듈 Gradle 프로젝트**: 루트 `build.gradle`에서 공유 의존성과 플러그인 설정
-- **마이크로서비스**: 현재 `post-server`와 `user-server` 모듈 포함 (참고: `comment-server`는 settings에 참조되어 있지만 디렉터리가 존재하지 않음)
+- **마이크로서비스**: 현재 `post-server`, `comment-server`, `user-server` 모듈 포함
 - **이벤트 기반 통신**: 서비스 간 메시징을 위한 Kafka 사용
 - **서비스별 데이터베이스** 패턴: 각 서비스마다 별도의 MySQL 인스턴스
 - **캐싱 레이어**: 성능 최적화를 위한 Redis 사용
@@ -20,7 +20,8 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
 서비스들은 다음 외부 의존성이 필요합니다 (`compose.yaml`에서 설정):
 - **MySQL 데이터베이스**:
   - post-server: `mysql-post` (포트 3307)
-  - user-server: `mysql-user` (포트 3308)
+  - comment-server: `mysql-comment` (포트 3308)
+  - user-server: `mysql-user` (포트 3309)
 - **Redis**: 캐싱용 포트 6379
 - **Kafka**: KRaft 모드 포트 9092 (Zookeeper 불필요)
 
@@ -33,6 +34,7 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
 
 # 특정 모듈 빌드
 ./gradlew post-server:build
+./gradlew comment-server:build
 ./gradlew user-server:build
 
 # 테스트 실행 (모든 모듈)
@@ -40,6 +42,7 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
 
 # 특정 모듈 테스트
 ./gradlew post-server:test
+./gradlew comment-server:test
 ./gradlew user-server:test
 
 # 단일 테스트 클래스 실행
@@ -63,7 +66,10 @@ docker-compose ps
 # post-server 실행 (포트 8081)
 ./gradlew post-server:bootRun
 
-# user-server 실행 (포트 미정의)
+# comment-server 실행 (포트 8082)
+./gradlew comment-server:bootRun
+
+# user-server 실행 (포트 8083)
 ./gradlew user-server:bootRun
 
 # 테스트 프로파일로 실행
@@ -80,6 +86,7 @@ docker-compose down
 
 # JAR 파일 생성 위치:
 # post-server/build/libs/post-server-0.0.1-SNAPSHOT.jar
+# comment-server/build/libs/comment-server-0.0.1-SNAPSHOT.jar
 # user-server/build/libs/user-server-0.0.1-SNAPSHOT.jar
 ```
 
@@ -92,7 +99,9 @@ docker-compose down
 - **메시징**: Apache Kafka with Spring Kafka
 - **캐싱**: Redis with Spring Data Redis
 - **빌드 도구**: Gradle with Kotlin DSL
-- **테스팅**: JUnit 5, Testcontainers, Spring Boot Test
+- **테스팅**: JUnit 5, Spring Boot Test (Testcontainers 의존성 제거됨)
+- **보안**: Spring Security with JWT, BCrypt 패스워드 암호화
+- **이메일**: Spring Mail with SMTP (Gmail 지원)
 
 ## 주요 설정 참고사항
 
@@ -105,9 +114,10 @@ docker-compose down
 ## 핵심 아키텍처 패턴
 
 ### 이벤트 기반 통신
-- **이벤트 발행**: PostService에서 생성/삭제 시 Kafka 이벤트 발행
-- **토픽 구조**: `post.created`, `post.deleted` 토픽 사용
-- **비동기 처리**: PostEventPublisher를 통한 논블로킹 이벤트 발행
+- **이벤트 발행**: PostService와 CommentService에서 생성/삭제 시 Kafka 이벤트 발행
+- **토픽 구조**: `post.created`, `post.deleted`, `comment.created`, `comment.updated`, `comment.deleted` 토픽 사용
+- **비동기 처리**: EventPublisher를 통한 논블로킹 이벤트 발행
+- **서비스 간 통신**: comment-server가 post 관련 이벤트를 구독하여 데이터 동기화
 - **장애 복구**: 이벤트 발행 실패 시 로깅 후 서비스 로직은 계속 진행
 
 ### 캐싱 전략 (Redis)
@@ -122,47 +132,28 @@ docker-compose down
 - **계층 분리**: Controller → Service → Repository 계층 구조
 - **DTO 변환**: 도메인 객체와 API 응답 객체 분리
 
-## 테스트 환경 최적화
+## 테스트 환경 설정
 
-### Testcontainers 컨테이너 재사용 설정
+### Testcontainers 의존성 제거
 
-로컬 개발 환경에서 테스트 실행 속도를 향상시키기 위해 Testcontainers 컨테이너 재사용 기능을 활용할 수 있습니다.
+프로젝트에서 Testcontainers 의존성이 제거되었습니다:
 
-#### 환경 설정 방법
+**제거 사유**:
+- 테스트 클래스별로 컨테이너가 새로 기동되어 시간 소요가 큰 문제
+- 테스트 컨테이너 의존성이 없는 테스트까지 property 관련 의존성을 가지는 문제
+- 컨테이너 구성이 주는 안정성 대비 복잡성이 큰 문제
+- 컨테이너를 통한 테스트 시 오작동 발생 사례
 
-1. **홈 디렉터리에 설정 파일 생성**:
-   ```bash
-   # Windows
-   echo testcontainers.reuse.enable=true > %USERPROFILE%\.testcontainers.properties
-
-   # macOS/Linux
-   echo "testcontainers.reuse.enable=true" > ~/.testcontainers.properties
-   ```
-
-2. **환경 변수 설정 (선택사항)**:
-   ```bash
-   export TESTCONTAINERS_REUSE_ENABLE=true
-   ```
-
-#### 주의사항
-
-- **로컬 개발 전용**: 컨테이너 재사용은 CI 환경에서는 권장되지 않습니다
-- **수동 정리 필요**: 재사용된 컨테이너는 테스트 종료 후 자동으로 종료되지 않으므로 필요시 수동으로 정리해야 합니다
-- **설정 동일성**: 컨테이너 재사용을 위해서는 컨테이너 설정이 완전히 동일해야 합니다
-
-#### 수동 컨테이너 정리
-
-```bash
-# 모든 Testcontainers 컨테이너 정리
-docker ps -a --filter "label=org.testcontainers" --format "table {{.ID}}\t{{.Image}}\t{{.Status}}"
-docker rm -f $(docker ps -aq --filter "label=org.testcontainers")
-```
+**현재 테스트 환경**:
+- 로컬 인프라 서비스(`docker-compose up -d`)에 의존하는 통합 테스트
+- 단위 테스트는 모킹을 통한 독립적 실행
 
 ## 서비스 포트 및 엔드포인트
 
 ### 인프라 서비스
-- **MySQL (post-server)**: localhost:3307
-- **MySQL (comment-server)**: localhost:3308
+- **MySQL (post-server)**: localhost:3307 (database: post_db)
+- **MySQL (comment-server)**: localhost:3308 (database: comment_db)
+- **MySQL (user-server)**: localhost:3309 (database: user_db)
 - **Redis**: localhost:6379
 - **Kafka**: localhost:9092
 
@@ -172,3 +163,18 @@ docker rm -f $(docker ps -aq --filter "label=org.testcontainers")
   - GET /posts/{id} - 개별 게시물 조회
   - POST /posts - 게시물 생성
   - DELETE /posts/{id} - 게시물 삭제
+
+- **comment-server**: localhost:8082
+  - GET /comments?postId={id} - 특정 게시물의 댓글 조회
+  - POST /comments - 댓글 생성
+  - PUT /comments/{id} - 댓글 수정
+  - DELETE /comments/{id} - 댓글 삭제
+
+- **user-server**: localhost:8083
+  - POST /api/auth/signup - 회원가입 (이메일 인증 필요)
+  - POST /api/auth/login - 로그인 (JWT 토큰 발급)
+  - POST /api/auth/send-verification-code - 회원가입용 인증코드 발송
+  - POST /api/auth/send-password-reset-code - 비밀번호 재설정용 인증코드 발송
+  - POST /api/auth/verify-code - 인증코드 검증
+  - POST /api/auth/reset-password - 비밀번호 재설정
+  - POST /api/auth/find-email - 이메일 찾기 (마스킹된 이메일 반환)
