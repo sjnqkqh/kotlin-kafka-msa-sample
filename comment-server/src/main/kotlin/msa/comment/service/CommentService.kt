@@ -5,6 +5,8 @@ import msa.comment.dto.CommentResponse
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.model.Comment
 import msa.comment.repository.CommentRepository
+import msa.common.exception.CustomException
+import msa.common.exception.ErrorCode
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -34,10 +36,10 @@ class CommentService(
 
     fun updateComment(commentId: Long, request: CommentUpdateRequest): CommentResponse {
         val comment = commentRepository.findById(commentId)
-            .orElseThrow { IllegalArgumentException("댓글을 찾을 수 없습니다.") }
+            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
 
         if (comment.password != request.password) {
-            throw IllegalArgumentException("비밀번호가 일치하지 않습니다.")
+            throw CustomException(ErrorCode.INVALID_COMMENT_PASSWORD)
         }
 
         comment.content = request.content
@@ -51,10 +53,10 @@ class CommentService(
 
     fun deleteComment(commentId: Long, password: String) {
         val comment = commentRepository.findById(commentId)
-            .orElseThrow { IllegalArgumentException("댓글을 찾을 수 없습니다.") }
+            .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
 
         if (comment.password != password) {
-            throw IllegalArgumentException("비밀번호가 일치하지 않습니다.")
+            throw CustomException(ErrorCode.INVALID_COMMENT_PASSWORD)
         }
 
         commentRepository.delete(comment)
