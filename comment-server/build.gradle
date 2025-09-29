@@ -1,6 +1,10 @@
+dependencies {
+    implementation project(':common-component')
+}
+
 tasks.named('bootJar') {
     archiveBaseName = "comment-server"
-    mainClass = "msa.comment.PostServerApplication"
+    mainClass = "msa.comment.CommentServerApplication"
 }
 tasks.named('jar') { enabled = false }
 tasks.register("prepareKotlinBuildScriptModel"){}

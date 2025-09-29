@@ -1,3 +1,7 @@
+dependencies {
+    implementation project(':common-component')
+}
+
 tasks.named('bootJar') {
     archiveBaseName = "user-server"
     mainClass = "msa.user.UserServerApplication"
