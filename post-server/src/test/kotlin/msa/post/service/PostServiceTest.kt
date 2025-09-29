@@ -1,6 +1,9 @@
 package msa.post.service
 
+import msa.common.dto.PageResponse
+import msa.common.exception.CustomException
 import msa.post.dto.PostCreateRequest
+import msa.post.dto.PostResponse
 import msa.post.model.Post
 import msa.post.repository.PostRepository
 import org.junit.jupiter.api.Assertions.*
@@ -49,7 +52,7 @@ class PostServiceTest {
         `when`(postRepository.count()).thenReturn(50L)
 
         // when
-        val result = postService.getPostsByPage(pageable)
+        val result: PageResponse<PostResponse> = postService.getPostsByPage(pageable)
 
         // then
         assertEquals(2, result.content.size)
@@ -76,7 +79,7 @@ class PostServiceTest {
         `when`(postRepository.findAllByOrderByCreatedAtDesc(pageable)).thenReturn(dbPage)
 
         // when
-        val result = postService.getPostsByPage(pageable)
+        val result: PageResponse<PostResponse> = postService.getPostsByPage(pageable)
 
         // then
         assertEquals(3, result.content.size)
@@ -94,7 +97,7 @@ class PostServiceTest {
         `when`(postRedisService.getCachedPost(postId)).thenReturn(cachedPost)
 
         // when
-        val result = postService.getPostById(postId)
+        val result: PostResponse = postService.getPostById(postId)
 
         // then
         assertEquals(postId, result.id)
@@ -112,7 +115,7 @@ class PostServiceTest {
         `when`(postRepository.findById(postId)).thenReturn(Optional.of(dbPost))
 
         // when
-        val result = postService.getPostById(postId)
+        val result: PostResponse = postService.getPostById(postId)
 
         // then
         assertEquals(postId, result.id)
@@ -129,11 +132,9 @@ class PostServiceTest {
         `when`(postRepository.findById(postId)).thenReturn(Optional.empty())
 
         // when & then
-        val exception = assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(CustomException::class.java) {
             postService.getPostById(postId)
         }
-
-        assertEquals("Post not found with id: $postId", exception.message)
     }
 
     @Test
@@ -149,7 +150,7 @@ class PostServiceTest {
         `when`(postRedisService.calculateExpireTime(Duration.ofHours(12))).thenReturn(expireTime)
 
         // when
-        val result = postService.createPost(request)
+        val result: PostResponse = postService.createPost(request)
 
         // then
         assertEquals(1L, result.id)
@@ -181,11 +182,9 @@ class PostServiceTest {
         `when`(postRepository.existsById(postId)).thenReturn(false)
 
         // when & then
-        val exception = assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(CustomException::class.java) {
             postService.deletePost(postId)
         }
-
-        assertEquals("Post not found with id: $postId", exception.message)
     }
 
     private fun createPost(

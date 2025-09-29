@@ -1,6 +1,8 @@
 package msa.post.service
 
-import msa.post.dto.PageResponse
+import msa.common.dto.PageResponse
+import msa.common.exception.CustomException
+import msa.common.exception.ErrorCode
 import msa.post.dto.PostCreateRequest
 import msa.post.dto.PostResponse
 import msa.post.model.Post
@@ -66,7 +68,7 @@ class PostService(
         }
 
         val post = postRepository.findById(id)
-            .orElseThrow { IllegalArgumentException("Post not found with id: $id") }
+            .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
 
         postRedisService.cachePost(post)
 
@@ -94,7 +96,7 @@ class PostService(
     @Transactional
     fun deletePost(id: Long) {
         if (!postRepository.existsById(id)) {
-            throw IllegalArgumentException("Post not found with id: $id")
+            throw CustomException(ErrorCode.POST_NOT_FOUND)
         }
 
         // 캐시 갱신 로직 추가
