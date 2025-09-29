@@ -10,6 +10,7 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
 
 - **멀티 모듈 Gradle 프로젝트**: 루트 `build.gradle`에서 공유 의존성과 플러그인 설정
 - **마이크로서비스**: 현재 `post-server`, `comment-server`, `user-server` 모듈 포함
+- **공통 컴포넌트**: `common-component` 모듈로 공유 DTO, 예외 처리, API 응답 형식 표준화
 - **이벤트 기반 통신**: 서비스 간 메시징을 위한 Kafka 사용
 - **서비스별 데이터베이스** 패턴: 각 서비스마다 별도의 MySQL 인스턴스
 - **캐싱 레이어**: 성능 최적화를 위한 Redis 사용
@@ -23,7 +24,7 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
   - comment-server: `mysql-comment` (포트 3308)
   - user-server: `mysql-user` (포트 3309)
 - **Redis**: 캐싱용 포트 6379
-- **Kafka**: KRaft 모드 포트 9092 (Zookeeper 불필요)
+- **Kafka**: KRaft 모드 포트 29092 (Zookeeper 불필요)
 
 ## 개발 명령어
 
@@ -33,6 +34,7 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
 ./gradlew build
 
 # 특정 모듈 빌드
+./gradlew common-component:build
 ./gradlew post-server:build
 ./gradlew comment-server:build
 ./gradlew user-server:build
@@ -41,6 +43,7 @@ Spring Boot, Kafka, Redis, MySQL을 사용한 Kotlin 마이크로서비스 샘�
 ./gradlew test
 
 # 특정 모듈 테스트
+./gradlew common-component:test
 ./gradlew post-server:test
 ./gradlew comment-server:test
 ./gradlew user-server:test
@@ -131,6 +134,13 @@ docker-compose down
 - **의존성 주입**: 생성자 기반 DI로 테스트 용이성 확보
 - **계층 분리**: Controller → Service → Repository 계층 구조
 - **DTO 변환**: 도메인 객체와 API 응답 객체 분리
+
+### 공통 컴포넌트 아키텍처 (common-component)
+- **표준 API 응답**: `ApiResponse<T>` 클래스로 success/error 응답 형식 통일
+- **중앙집중식 예외 처리**: `GlobalExceptionHandler`로 모든 서비스의 예외 처리 표준화
+- **커스텀 예외 체계**: `CustomException`과 `ErrorCode` enum으로 구조화된 오류 관리
+- **페이지네이션 표준화**: `PageResponse<T>` 클래스로 일관된 페이징 응답
+- **라이브러리 모듈 설정**: `bootJar` 비활성화, 일반 `jar` 파일로 빌드하여 다른 모듈에서 의존성으로 사용
 
 ## 테스트 환경 설정
 
