@@ -1,11 +1,15 @@
 package msa.comment.integration
 
 import com.fasterxml.jackson.databind.ObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import msa.comment.config.TestConfig
 import msa.comment.dto.CommentCreateRequest
 import msa.comment.dto.CommentDeleteRequest
+import msa.comment.dto.CommentResponse
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.repository.CommentRepository
+import msa.comment.service.CommentService
+import msa.common.dto.ApiResponse
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -32,9 +36,6 @@ class CommentIntegrationTest {
     @Autowired
     private lateinit var objectMapper: ObjectMapper
 
-    @Autowired
-    private lateinit var commentRepository: CommentRepository
-
     @Test
     @DisplayName("댓글 생성 API 테스트")
     fun createCommentApi() {
@@ -53,9 +54,9 @@ class CommentIntegrationTest {
                 .content(objectMapper.writeValueAsString(request))
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.postId").value(1))
-            .andExpect(jsonPath("$.author").value("테스터"))
-            .andExpect(jsonPath("$.content").value("API 테스트 댓글"))
+            .andExpect(jsonPath("$.data.postId").value(1))
+            .andExpect(jsonPath("$.data.author").value("테스터"))
+            .andExpect(jsonPath("$.data.content").value("API 테스트 댓글"))
     }
 
     @Test
@@ -76,7 +77,7 @@ class CommentIntegrationTest {
         ).andReturn()
 
         val commentId = objectMapper.readTree(createResponse.response.contentAsString)
-            .get("id").asLong()
+            .get("data").get("id").asLong()
 
         val updateRequest = CommentUpdateRequest(
             password = "1234",
@@ -90,7 +91,7 @@ class CommentIntegrationTest {
                 .content(objectMapper.writeValueAsString(updateRequest))
         )
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.content").value("수정된 댓글"))
+            .andExpect(jsonPath("$.data.content").value("수정된 댓글"))
     }
 
     @Test
@@ -109,10 +110,9 @@ class CommentIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(createRequest))
         ).andReturn()
-
-        val commentId = objectMapper.readTree(createResponse.response.contentAsString)
-            .get("id").asLong()
-
+        val commentResponse: ApiResponse<CommentResponse> =
+            objectMapper.readValue(createResponse.response.contentAsString)
+        val commentId = commentResponse.data!!.id
         val deleteRequest = CommentDeleteRequest(password = "1234")
 
         // When & Then
@@ -120,8 +120,8 @@ class CommentIntegrationTest {
             delete("/api/comments/$commentId")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(deleteRequest))
-        )
-            .andExpect(status().isNoContent)
+        ).andExpect(status().isOk)
+            .andExpect(jsonPath("$.success").value(true))
     }
 
     @Test
@@ -148,9 +148,9 @@ class CommentIntegrationTest {
         // When & Then
         mockMvc.perform(get("/api/posts/$postId/comments"))
             .andExpect(status().isOk)
-            .andExpect(jsonPath("$.length()").value(2))
-            .andExpect(jsonPath("$[0].content").value("둘째 댓글")) // 최신순
-            .andExpect(jsonPath("$[1].content").value("첫 댓글"))
+            .andExpect(jsonPath("$.data.length()").value(2))
+            .andExpect(jsonPath("$.data[0].content").value("둘째 댓글")) // 최신순
+            .andExpect(jsonPath("$.data[1].content").value("첫 댓글"))
     }
 
     @Test
@@ -171,7 +171,7 @@ class CommentIntegrationTest {
         ).andReturn()
 
         val commentId = objectMapper.readTree(createResponse.response.contentAsString)
-            .get("id").asLong()
+            .get("data").get("id").asLong()
 
         val updateRequest = CommentUpdateRequest(
             password = "wrong",

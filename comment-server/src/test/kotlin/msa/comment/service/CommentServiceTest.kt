@@ -4,6 +4,7 @@ import msa.comment.config.TestConfig
 import msa.comment.dto.CommentCreateRequest
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.repository.CommentRepository
+import msa.common.exception.CustomException
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.DisplayName
@@ -87,7 +88,7 @@ class CommentServiceTest {
         )
 
         // When & Then
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(CustomException::class.java) {
             commentService.updateComment(createdComment.id, updateRequest)
         }
     }
@@ -125,7 +126,7 @@ class CommentServiceTest {
         val createdComment = commentService.createComment(createRequest)
 
         // When & Then
-        assertThrows(IllegalArgumentException::class.java) {
+        assertThrows(CustomException::class.java) {
             commentService.deleteComment(createdComment.id, "틀림")
         }
     }
