@@ -1,5 +1,7 @@
 package msa.user.service
 
+import msa.common.exception.CustomException
+import msa.common.exception.ErrorCode
 import msa.user.dto.*
 import msa.user.model.User
 import msa.user.model.UserType
@@ -29,24 +31,24 @@ class AuthService(
 ) {
 
     @Transactional
-    fun sendSignupVerificationCode(request: SendVerificationCodeRequest): ApiResponse<Unit> {
+    fun sendSignupVerificationCode(request: SendVerificationCodeRequest) {
         if (userRepository.existsByEmail(request.email)) {
-            return ApiResponse(false, "이미 등록된 이메일입니다.")
+            throw CustomException(ErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
-        return sendVerificationCodeInternal(request.email, VerificationType.SIGNUP)
+        sendVerificationCodeInternal(request.email, VerificationType.SIGNUP)
     }
 
     @Transactional
-    fun sendPasswordResetVerificationCode(request: SendVerificationCodeRequest): ApiResponse<Unit> {
+    fun sendPasswordResetVerificationCode(request: SendVerificationCodeRequest) {
         if (!userRepository.existsByEmail(request.email)) {
-            return ApiResponse(false, "등록되지 않은 이메일입니다.")
+            throw CustomException(ErrorCode.USER_NOT_FOUND)
         }
 
-        return sendVerificationCodeInternal(request.email, VerificationType.PASSWORD_RESET)
+        sendVerificationCodeInternal(request.email, VerificationType.PASSWORD_RESET)
     }
 
-    private fun sendVerificationCodeInternal(email: String, type: VerificationType): ApiResponse<Unit> {
+    private fun sendVerificationCodeInternal(email: String, type: VerificationType) {
         // 기존 인증코드 삭제
         verificationCodeRepository.deleteByEmailAndType(email, type)
 
@@ -65,27 +67,23 @@ class AuthService(
 
         // 이메일 발송
         emailService.sendVerificationCode(email, code, type.name)
-
-        return ApiResponse(true, "인증번호가 발송되었습니다.")
     }
 
-    fun verifyCode(request: VerifyCodeRequest, type: VerificationType): ApiResponse<Unit> {
+    fun verifyCode(request: VerifyCodeRequest, type: VerificationType) {
         val verificationCode = verificationCodeRepository.findByEmailAndCodeAndType(
             request.email, request.code, type
         ).orElse(null)
 
         if (verificationCode == null || !verificationCode.isValid()) {
-            return ApiResponse(false, "유효하지 않은 인증번호입니다.")
+            throw CustomException(ErrorCode.INVALID_VERIFICATION_CODE)
         }
-
-        return ApiResponse(true, "인증이 완료되었습니다.")
     }
 
     @Transactional
-    fun signup(request: SignupRequest): ApiResponse<AuthResponse> {
+    fun signup(request: SignupRequest): AuthResponse {
         // 이메일 중복 체크
         if (userRepository.existsByEmail(request.email)) {
-            return ApiResponse(false, "이미 등록된 이메일입니다.")
+            throw CustomException(ErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
         // 인증번호 검증
@@ -94,7 +92,7 @@ class AuthService(
         ).orElse(null)
 
         if (verificationCode == null || !verificationCode.isValid()) {
-            return ApiResponse(false, "유효하지 않은 인증번호입니다.")
+            throw CustomException(ErrorCode.INVALID_VERIFICATION_CODE)
         }
 
         // 사용자 생성
@@ -120,47 +118,43 @@ class AuthService(
             userType = savedUser.userType
         )
 
-        val authResponse = AuthResponse(
+        return AuthResponse(
             accessToken = token,
             user = userInfo
         )
-
-        return ApiResponse(true, "회원가입이 완료되었습니다.", authResponse)
     }
 
-    fun login(request: LoginRequest): ApiResponse<AuthResponse> {
+    fun login(request: LoginRequest): AuthResponse {
         try {
             authenticationManager.authenticate(
                 UsernamePasswordAuthenticationToken(request.email, request.password)
             )
-
-            val user = userRepository.findByEmail(request.email)
-                .orElseThrow { RuntimeException("사용자를 찾을 수 없습니다.") }
-
-            val token = jwtService.generateToken(user)
-            val userInfo = UserInfo(
-                id = user.id,
-                email = user.email,
-                name = user.name,
-                userType = user.userType
-            )
-
-            val authResponse = AuthResponse(
-                accessToken = token,
-                user = userInfo
-            )
-
-            return ApiResponse(true, "로그인이 완료되었습니다.", authResponse)
-        } catch (e: Exception) {
-            return ApiResponse(false, "이메일 또는 비밀번호가 올바르지 않습니다.")
+        } catch (_: Exception) {
+            throw CustomException(ErrorCode.LOGIN_FAILED)
         }
+
+        val user = userRepository.findByEmail(request.email)
+            .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
+
+        val token = jwtService.generateToken(user)
+        val userInfo = UserInfo(
+            id = user.id,
+            email = user.email,
+            name = user.name,
+            userType = user.userType
+        )
+
+        return AuthResponse(
+            accessToken = token,
+            user = userInfo
+        )
     }
 
     @Transactional
-    fun resetPassword(request: ResetPasswordRequest): ApiResponse<Unit> {
+    fun resetPassword(request: ResetPasswordRequest) {
         // 사용자 존재 확인
         val user = userRepository.findByEmail(request.email).orElse(null)
-            ?: return ApiResponse(false, "등록되지 않은 이메일입니다.")
+            ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
 
         // 인증번호 검증
         val verificationCode = verificationCodeRepository.findByEmailAndCodeAndType(
@@ -168,7 +162,7 @@ class AuthService(
         ).orElse(null)
 
         if (verificationCode == null || !verificationCode.isValid()) {
-            return ApiResponse(false, "유효하지 않은 인증번호입니다.")
+            throw CustomException(ErrorCode.INVALID_VERIFICATION_CODE)
         }
 
         // 비밀번호 업데이트
@@ -180,32 +174,6 @@ class AuthService(
 
         // 인증번호 사용 처리
         verificationCodeRepository.save(verificationCode.copy(isUsed = true))
-
-        return ApiResponse(true, "비밀번호가 재설정되었습니다.")
     }
 
-    fun findUserByEmail(email: String): ApiResponse<String> {
-        val user = userRepository.findByEmail(email).orElse(null)
-            ?: return ApiResponse(false, "등록되지 않은 이메일입니다.")
-
-        // 이메일의 일부를 마스킹하여 반환
-        val maskedEmail = maskEmail(email)
-        return ApiResponse(true, "가입된 이메일을 찾았습니다.", maskedEmail)
-    }
-
-    private fun maskEmail(email: String): String {
-        val parts = email.split("@")
-        if (parts.size != 2) return email
-
-        val localPart = parts[0]
-        val domain = parts[1]
-
-        val maskedLocal = if (localPart.length <= 2) {
-            localPart
-        } else {
-            localPart.take(2) + "*".repeat(localPart.length - 2)
-        }
-
-        return "$maskedLocal@$domain"
-    }
 }

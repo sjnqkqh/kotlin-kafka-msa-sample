@@ -1,5 +1,7 @@
 package msa.user.service
 
+import msa.common.exception.CustomException
+import msa.common.exception.ErrorCode
 import msa.user.dto.*
 import msa.user.model.User
 import msa.user.model.UserType
@@ -10,6 +12,7 @@ import msa.user.repository.VerificationCodeRepository
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.assertThrows
 import org.junit.jupiter.api.extension.ExtendWith
 import org.mockito.ArgumentCaptor
 import org.mockito.Mock
@@ -22,8 +25,7 @@ import org.springframework.security.crypto.password.PasswordEncoder
 import java.time.LocalDateTime
 import java.util.*
 import kotlin.test.assertEquals
-import kotlin.test.assertFalse
-import kotlin.test.assertTrue
+import kotlin.test.assertNotNull
 
 @ExtendWith(MockitoExtension::class)
 class AuthServiceTest {
@@ -73,12 +75,8 @@ class AuthServiceTest {
         whenever(userRepository.existsByEmail(email)).thenReturn(false)
         whenever(emailService.generateVerificationCode()).thenReturn(verificationCode)
 
-        // When
-        val result = authService.sendSignupVerificationCode(request)
-
-        // Then
-        assertTrue(result.success)
-        assertEquals("인증번호가 발송되었습니다.", result.message)
+        // When & Then - should not throw exception
+        authService.sendSignupVerificationCode(request)
 
         verify(verificationCodeRepository).deleteByEmailAndType(email, VerificationType.SIGNUP)
         verify(verificationCodeRepository).save(any<VerificationCode>())
@@ -94,13 +92,12 @@ class AuthServiceTest {
 
         whenever(userRepository.existsByEmail(email)).thenReturn(true)
 
-        // When
-        val result = authService.sendSignupVerificationCode(request)
+        // When & Then
+        val exception = assertThrows<CustomException> {
+            authService.sendSignupVerificationCode(request)
+        }
 
-        // Then
-        assertFalse(result.success)
-        assertEquals("이미 등록된 이메일입니다.", result.message)
-
+        assertEquals(ErrorCode.EMAIL_ALREADY_EXISTS, exception.errorCode)
         verify(verificationCodeRepository, never()).save(any<VerificationCode>())
         verify(emailService, never()).sendVerificationCode(any(), any(), any())
     }
@@ -116,12 +113,8 @@ class AuthServiceTest {
         whenever(userRepository.existsByEmail(email)).thenReturn(true)
         whenever(emailService.generateVerificationCode()).thenReturn(verificationCode)
 
-        // When
-        val result = authService.sendPasswordResetVerificationCode(request)
-
-        // Then
-        assertTrue(result.success)
-        assertEquals("인증번호가 발송되었습니다.", result.message)
+        // When & Then - should not throw exception
+        authService.sendPasswordResetVerificationCode(request)
 
         verify(verificationCodeRepository).deleteByEmailAndType(email, VerificationType.PASSWORD_RESET)
         verify(verificationCodeRepository).save(any<VerificationCode>())
@@ -137,13 +130,12 @@ class AuthServiceTest {
 
         whenever(userRepository.existsByEmail(email)).thenReturn(false)
 
-        // When
-        val result = authService.sendPasswordResetVerificationCode(request)
+        // When & Then
+        val exception = assertThrows<CustomException> {
+            authService.sendPasswordResetVerificationCode(request)
+        }
 
-        // Then
-        assertFalse(result.success)
-        assertEquals("등록되지 않은 이메일입니다.", result.message)
-
+        assertEquals(ErrorCode.USER_NOT_FOUND, exception.errorCode)
         verify(verificationCodeRepository, never()).save(any<VerificationCode>())
         verify(emailService, never()).sendVerificationCode(any(), any(), any())
     }
@@ -165,12 +157,8 @@ class AuthServiceTest {
         whenever(verificationCodeRepository.findByEmailAndCodeAndType(email, code, VerificationType.SIGNUP))
             .thenReturn(Optional.of(verificationCode))
 
-        // When
-        val result = authService.verifyCode(request, VerificationType.SIGNUP)
-
-        // Then
-        assertTrue(result.success)
-        assertEquals("인증이 완료되었습니다.", result.message)
+        // When & Then - should not throw exception
+        authService.verifyCode(request, VerificationType.SIGNUP)
     }
 
     @Test
@@ -184,12 +172,12 @@ class AuthServiceTest {
         whenever(verificationCodeRepository.findByEmailAndCodeAndType(email, code, VerificationType.SIGNUP))
             .thenReturn(Optional.empty())
 
-        // When
-        val result = authService.verifyCode(request, VerificationType.SIGNUP)
+        // When & Then
+        val exception = assertThrows<CustomException> {
+            authService.verifyCode(request, VerificationType.SIGNUP)
+        }
 
-        // Then
-        assertFalse(result.success)
-        assertEquals("유효하지 않은 인증번호입니다.", result.message)
+        assertEquals(ErrorCode.INVALID_VERIFICATION_CODE, exception.errorCode)
     }
 
     @Test
@@ -230,11 +218,10 @@ class AuthServiceTest {
         val result = authService.signup(request)
 
         // Then
-        assertTrue(result.success)
-        assertEquals("회원가입이 완료되었습니다.", result.message)
-        assertEquals(token, result.data?.accessToken)
-        assertEquals(email, result.data?.user?.email)
-        assertEquals(name, result.data?.user?.name)
+        assertNotNull(result)
+        assertEquals(token, result.accessToken)
+        assertEquals(email, result.user.email)
+        assertEquals(name, result.user.name)
 
         verify(userRepository).save(any<User>())
         verify(verificationCodeRepository).save(verificationCode.copy(isUsed = true))
@@ -249,13 +236,12 @@ class AuthServiceTest {
 
         whenever(userRepository.existsByEmail(email)).thenReturn(true)
 
-        // When
-        val result = authService.signup(request)
+        // When & Then
+        val exception = assertThrows<CustomException> {
+            authService.signup(request)
+        }
 
-        // Then
-        assertFalse(result.success)
-        assertEquals("이미 등록된 이메일입니다.", result.message)
-
+        assertEquals(ErrorCode.EMAIL_ALREADY_EXISTS, exception.errorCode)
         verify(userRepository, never()).save(any<User>())
     }
 
@@ -270,13 +256,12 @@ class AuthServiceTest {
         whenever(verificationCodeRepository.findByEmailAndCodeAndType(email, "invalid-code", VerificationType.SIGNUP))
             .thenReturn(Optional.empty())
 
-        // When
-        val result = authService.signup(request)
+        // When & Then
+        val exception = assertThrows<CustomException> {
+            authService.signup(request)
+        }
 
-        // Then
-        assertFalse(result.success)
-        assertEquals("유효하지 않은 인증번호입니다.", result.message)
-
+        assertEquals(ErrorCode.INVALID_VERIFICATION_CODE, exception.errorCode)
         verify(userRepository, never()).save(any<User>())
     }
 
@@ -306,10 +291,9 @@ class AuthServiceTest {
         val result = authService.login(request)
 
         // Then
-        assertTrue(result.success)
-        assertEquals("로그인이 완료되었습니다.", result.message)
-        assertEquals(token, result.data?.accessToken)
-        assertEquals(email, result.data?.user?.email)
+        assertNotNull(result)
+        assertEquals(token, result.accessToken)
+        assertEquals(email, result.user.email)
     }
 
     @Test
@@ -323,13 +307,12 @@ class AuthServiceTest {
         whenever(authenticationManager.authenticate(any<UsernamePasswordAuthenticationToken>()))
             .thenThrow(BadCredentialsException("Bad credentials"))
 
-        // When
-        val result = authService.login(request)
+        // When & Then
+        val exception = assertThrows<CustomException> {
+            authService.login(request)
+        }
 
-        // Then
-        assertFalse(result.success)
-        assertEquals("이메일 또는 비밀번호가 올바르지 않습니다.", result.message)
-
+        assertEquals(ErrorCode.LOGIN_FAILED, exception.errorCode)
         verify(userRepository, never()).findByEmail(any())
         verify(jwtService, never()).generateToken(any())
     }
@@ -364,12 +347,8 @@ class AuthServiceTest {
             .thenReturn(Optional.of(verificationCode))
         whenever(passwordEncoder.encode(newPassword)).thenReturn(encodedPassword)
 
-        // When
-        val result = authService.resetPassword(request)
-
-        // Then
-        assertTrue(result.success)
-        assertEquals("비밀번호가 재설정되었습니다.", result.message)
+        // When & Then - should not throw exception
+        authService.resetPassword(request)
 
         val userCaptor = ArgumentCaptor.forClass(User::class.java)
         verify(userRepository).save(userCaptor.capture())
@@ -387,97 +366,13 @@ class AuthServiceTest {
 
         whenever(userRepository.findByEmail(email)).thenReturn(Optional.empty())
 
-        // When
-        val result = authService.resetPassword(request)
+        // When & Then
+        val exception = assertThrows<CustomException> {
+            authService.resetPassword(request)
+        }
 
-        // Then
-        assertFalse(result.success)
-        assertEquals("등록되지 않은 이메일입니다.", result.message)
-
+        assertEquals(ErrorCode.USER_NOT_FOUND, exception.errorCode)
         verify(verificationCodeRepository, never()).findByEmailAndCodeAndType(any(), any(), any())
         verify(userRepository, never()).save(any<User>())
-    }
-
-    @Test
-    @DisplayName("이메일 찾기 - 성공")
-    fun findUserByEmail_Success() {
-        // Given
-        val email = "testuser@example.com"
-        val user = User(
-            id = 1L,
-            email = email,
-            password = "password",
-            name = "Test User",
-            userType = UserType.NORMAL,
-            isEmailVerified = true
-        )
-
-        whenever(userRepository.findByEmail(email)).thenReturn(Optional.of(user))
-
-        // When
-        val result = authService.findUserByEmail(email)
-
-        // Then
-        assertTrue(result.success)
-        assertEquals("가입된 이메일을 찾았습니다.", result.message)
-        assertEquals("te******@example.com", result.data)
-    }
-
-    @Test
-    @DisplayName("이메일 찾기 - 사용자 없음")
-    fun findUserByEmail_UserNotFound() {
-        // Given
-        val email = "notfound@example.com"
-
-        whenever(userRepository.findByEmail(email)).thenReturn(Optional.empty())
-
-        // When
-        val result = authService.findUserByEmail(email)
-
-        // Then
-        assertFalse(result.success)
-        assertEquals("등록되지 않은 이메일입니다.", result.message)
-    }
-
-    @Test
-    @DisplayName("이메일 마스킹 테스트 - 짧은 이메일")
-    fun testEmailMasking_ShortEmail() {
-        // Given
-        val email = "ab@test.com"
-        val user = User(
-            email = email,
-            password = "password",
-            name = "Test User"
-        )
-
-        whenever(userRepository.findByEmail(email)).thenReturn(Optional.of(user))
-
-        // When
-        val result = authService.findUserByEmail(email)
-
-        // Then
-        assertTrue(result.success)
-        assertEquals("ab@test.com", result.data)
-    }
-
-    @Test
-    @DisplayName("이메일 마스킹 테스트 - 긴 이메일")
-    fun testEmailMasking_LongEmail() {
-        // Given
-        val email = "verylongemail@example.com"
-        val user = User(
-            email = email,
-            password = "password",
-            name = "Test User"
-        )
-
-        whenever(userRepository.findByEmail(email)).thenReturn(Optional.of(user))
-
-        // When
-        val result = authService.findUserByEmail(email)
-
-        // Then
-        assertTrue(result.success)
-        assertEquals("ve***********@example.com", result.data)
     }
 }

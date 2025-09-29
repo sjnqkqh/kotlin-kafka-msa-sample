@@ -1,11 +1,14 @@
 package msa.user.controller
 
 import jakarta.validation.Valid
+import msa.common.dto.ApiResponse
 import msa.user.dto.*
 import msa.user.model.VerificationType
 import msa.user.service.AuthService
-import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestMapping
+import org.springframework.web.bind.annotation.RestController
 
 @RestController
 @RequestMapping("/api/auth")
@@ -14,82 +17,44 @@ class AuthController(
 ) {
 
     @PostMapping("/send-verification-code")
-    fun sendSignupVerificationCode(@Valid @RequestBody request: SendVerificationCodeRequest): ResponseEntity<ApiResponse<Unit>> {
-        val response = authService.sendSignupVerificationCode(request)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+    fun sendSignupVerificationCode(@Valid @RequestBody request: SendVerificationCodeRequest): ApiResponse<Unit> {
+        authService.sendSignupVerificationCode(request)
+        return ApiResponse.success()
     }
 
     @PostMapping("/send-password-reset-code")
-    fun sendPasswordResetVerificationCode(@Valid @RequestBody request: SendVerificationCodeRequest): ResponseEntity<ApiResponse<Unit>> {
-        val response = authService.sendPasswordResetVerificationCode(request)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+    fun sendPasswordResetVerificationCode(@Valid @RequestBody request: SendVerificationCodeRequest): ApiResponse<Unit> {
+        authService.sendPasswordResetVerificationCode(request)
+        return ApiResponse.success()
     }
 
     @PostMapping("/verify-code")
-    fun verifySignupCode(@Valid @RequestBody request: VerifyCodeRequest): ResponseEntity<ApiResponse<Unit>> {
-        val response = authService.verifyCode(request, VerificationType.SIGNUP)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+    fun verifySignupCode(@Valid @RequestBody request: VerifyCodeRequest): ApiResponse<Unit> {
+        authService.verifyCode(request, VerificationType.SIGNUP)
+        return ApiResponse.success()
     }
 
     @PostMapping("/verify-password-reset-code")
-    fun verifyPasswordResetCode(@Valid @RequestBody request: VerifyCodeRequest): ResponseEntity<ApiResponse<Unit>> {
-        val response = authService.verifyCode(request, VerificationType.PASSWORD_RESET)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+    fun verifyPasswordResetCode(@Valid @RequestBody request: VerifyCodeRequest): ApiResponse<Unit> {
+        authService.verifyCode(request, VerificationType.PASSWORD_RESET)
+        return ApiResponse.success()
     }
 
     @PostMapping("/signup")
-    fun signup(@Valid @RequestBody request: SignupRequest): ResponseEntity<ApiResponse<AuthResponse>> {
-        val response = authService.signup(request)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+    fun signup(@Valid @RequestBody request: SignupRequest): ApiResponse<AuthResponse> {
+        val authResponse = authService.signup(request)
+        return ApiResponse.success(authResponse)
     }
 
     @PostMapping("/login")
-    fun login(@Valid @RequestBody request: LoginRequest): ResponseEntity<ApiResponse<AuthResponse>> {
-        val response = authService.login(request)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+    fun login(@Valid @RequestBody request: LoginRequest): ApiResponse<AuthResponse> {
+        val authResponse = authService.login(request)
+        return ApiResponse.success(authResponse)
     }
 
     @PostMapping("/reset-password")
-    fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest): ResponseEntity<ApiResponse<Unit>> {
-        val response = authService.resetPassword(request)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
-    }
-
-    @PostMapping("/find-email")
-    fun findUserByEmail(@Valid @RequestBody request: SendVerificationCodeRequest): ResponseEntity<ApiResponse<String>> {
-        val response = authService.findUserByEmail(request.email)
-        return if (response.success) {
-            ResponseEntity.ok(response)
-        } else {
-            ResponseEntity.badRequest().body(response)
-        }
+    fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest): ApiResponse<Unit> {
+        authService.resetPassword(request)
+        return ApiResponse.success()
     }
 }

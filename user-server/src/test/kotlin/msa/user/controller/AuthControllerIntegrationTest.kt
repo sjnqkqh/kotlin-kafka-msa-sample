@@ -12,6 +12,7 @@ import msa.user.service.EmailService
 import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
@@ -24,8 +25,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath
 import org.springframework.test.web.servlet.result.MockMvcResultMatchers.status
 import org.springframework.transaction.annotation.Transactional
-import org.mockito.kotlin.whenever
-import org.mockito.kotlin.any
 import java.time.LocalDateTime
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
@@ -73,7 +72,6 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("인증번호가 발송되었습니다."))
     }
 
     @Test
@@ -96,9 +94,9 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isConflict)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("이미 등록된 이메일입니다."))
+            .andExpect(jsonPath("$.error.message").value("이미 존재하는 이메일입니다"))
     }
 
     @Test
@@ -136,7 +134,6 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("인증번호가 발송되었습니다."))
     }
 
     @Test
@@ -149,9 +146,9 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("등록되지 않은 이메일입니다."))
+            .andExpect(jsonPath("$.error.message").value("사용자를 찾을 수 없습니다"))
     }
 
     @Test
@@ -178,7 +175,6 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("인증이 완료되었습니다."))
     }
 
     @Test
@@ -196,7 +192,7 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("유효하지 않은 인증번호입니다."))
+            .andExpect(jsonPath("$.error.message").value("잘못된 인증 코드입니다"))
     }
 
     @Test
@@ -225,7 +221,6 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("회원가입이 완료되었습니다."))
             .andExpect(jsonPath("$.data.accessToken").exists())
             .andExpect(jsonPath("$.data.user.email").value("newuser@example.com"))
             .andExpect(jsonPath("$.data.user.name").value("New User"))
@@ -256,9 +251,9 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isConflict)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("이미 등록된 이메일입니다."))
+            .andExpect(jsonPath("$.error.message").value("이미 존재하는 이메일입니다"))
     }
 
     @Test
@@ -278,7 +273,7 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isBadRequest)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("유효하지 않은 인증번호입니다."))
+            .andExpect(jsonPath("$.error.message").value("잘못된 인증 코드입니다"))
     }
 
     @Test
@@ -324,7 +319,6 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("로그인이 완료되었습니다."))
             .andExpect(jsonPath("$.data.accessToken").exists())
             .andExpect(jsonPath("$.data.user.email").value("user@example.com"))
     }
@@ -352,9 +346,9 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isUnauthorized)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("이메일 또는 비밀번호가 올바르지 않습니다."))
+            .andExpect(jsonPath("$.error.message").value("로그인에 실패했습니다"))
     }
 
     @Test
@@ -370,9 +364,9 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isUnauthorized)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("이메일 또는 비밀번호가 올바르지 않습니다."))
+            .andExpect(jsonPath("$.error.message").value("로그인에 실패했습니다"))
     }
 
     @Test
@@ -426,7 +420,6 @@ class AuthControllerIntegrationTest {
         )
             .andExpect(status().isOk)
             .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("비밀번호가 재설정되었습니다."))
     }
 
     @Test
@@ -443,49 +436,8 @@ class AuthControllerIntegrationTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(request))
         )
-            .andExpect(status().isBadRequest)
+            .andExpect(status().isNotFound)
             .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("등록되지 않은 이메일입니다."))
-    }
-
-    @Test
-    @DisplayName("이메일 찾기 - 성공")
-    fun findUserByEmail_Success() {
-        // 사용자 생성
-        val user = User(
-            email = "testuser@example.com",
-            password = passwordEncoder.encode("password123"),
-            name = "Test User",
-            userType = UserType.NORMAL,
-            isEmailVerified = true
-        )
-        userRepository.save(user)
-
-        val request = SendVerificationCodeRequest(email = "testuser@example.com")
-
-        mockMvc.perform(
-            post("/api/auth/find-email")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isOk)
-            .andExpect(jsonPath("$.success").value(true))
-            .andExpect(jsonPath("$.message").value("가입된 이메일을 찾았습니다."))
-            .andExpect(jsonPath("$.data").value("te******@example.com"))
-    }
-
-    @Test
-    @DisplayName("이메일 찾기 - 등록되지 않은 이메일")
-    fun findUserByEmail_NotFound() {
-        val request = SendVerificationCodeRequest(email = "notfound@example.com")
-
-        mockMvc.perform(
-            post("/api/auth/find-email")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(request))
-        )
-            .andExpect(status().isBadRequest)
-            .andExpect(jsonPath("$.success").value(false))
-            .andExpect(jsonPath("$.message").value("등록되지 않은 이메일입니다."))
+            .andExpect(jsonPath("$.error.message").value("사용자를 찾을 수 없습니다"))
     }
 }
