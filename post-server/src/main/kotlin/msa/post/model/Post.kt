@@ -24,6 +24,12 @@ data class Post(
     @Column(nullable = false, columnDefinition = "TEXT")
     var content: String,
 
+    @Column(nullable = false, name = "user_id")
+    val userId: Long,
+
+    @Column(nullable = false, length = 100, name = "author_name")
+    val authorName: String,
+
     @Column
     val lastCommentAppendedAt: LocalDateTime? = null,
 

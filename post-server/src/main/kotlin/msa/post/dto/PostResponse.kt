@@ -7,6 +7,8 @@ data class PostResponse(
     val id: Long,
     val title: String,
     val content: String,
+    val userId: Long,
+    val authorName: String,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 ) {
@@ -16,6 +18,8 @@ data class PostResponse(
                 id = post.id!!,
                 title = post.title,
                 content = post.content,
+                userId = post.userId,
+                authorName = post.authorName,
                 createdAt = post.createdAt!!,
                 updatedAt = post.updatedAt!!
             )

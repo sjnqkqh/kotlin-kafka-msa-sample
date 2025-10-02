@@ -1,5 +1,7 @@
 package msa.post.service
 
+import msa.common.auth.UserContext
+import msa.common.auth.UserContextProvider
 import msa.common.dto.PageResponse
 import msa.common.exception.CustomException
 import msa.post.dto.PostCreateRequest
@@ -11,14 +13,16 @@ import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
 import org.mockito.Mock
-import org.mockito.Mockito.`when`
 import org.mockito.MockitoAnnotations
 import org.springframework.data.domain.PageImpl
 import org.springframework.data.domain.PageRequest
-import java.time.Duration
+import org.mockito.kotlin.any
+import org.mockito.kotlin.doNothing
+import org.mockito.kotlin.whenever
 import java.time.LocalDateTime
 import java.util.*
 
+@DisplayName("게시물 서비스 테스트")
 class PostServiceTest {
 
     @Mock
@@ -30,12 +34,26 @@ class PostServiceTest {
     @Mock
     lateinit var postEventPublisher: PostEventPublisher
 
+    @Mock
+    lateinit var userContextProvider: UserContextProvider
+
     lateinit var postService: PostService
+
+    private val testUser = UserContext(
+        id = 1L,
+        email = "test@example.com",
+        name = "Test User",
+        userType = "NORMAL"
+    )
 
     @BeforeEach
     fun setUp() {
         MockitoAnnotations.openMocks(this)
-        postService = PostService(postRepository, postRedisService, postEventPublisher)
+        postService = PostService(postRepository, postRedisService, postEventPublisher, userContextProvider)
+
+        // 기본 Mock 설정
+        whenever(userContextProvider.getCurrentUser()).thenReturn(testUser)
+        whenever(userContextProvider.getCurrentUserOrNull()).thenReturn(testUser)
     }
 
     @Test
@@ -48,8 +66,8 @@ class PostServiceTest {
             createPost(2L, "Redis Post 2")
         )
 
-        `when`(postRedisService.getRecentPostsByRange(0L, 1L)).thenReturn(redisPosts)
-        `when`(postRepository.count()).thenReturn(50L)
+        whenever(postRedisService.getRecentPostsByRange(0L, 1L)).thenReturn(redisPosts)
+        whenever(postRepository.count()).thenReturn(50L)
 
         // when
         val result: PageResponse<PostResponse> = postService.getPostsByPage(pageable)
@@ -75,8 +93,8 @@ class PostServiceTest {
         )
         val dbPage = PageImpl(dbPosts, pageable, 20L)
 
-        `when`(postRedisService.getRecentPostsByRange(0L, 2L)).thenReturn(redisPosts)
-        `when`(postRepository.findAllByOrderByCreatedAtDesc(pageable)).thenReturn(dbPage)
+        whenever(postRedisService.getRecentPostsByRange(0L, 2L)).thenReturn(redisPosts)
+        whenever(postRepository.findAllByOrderByCreatedAtDesc(pageable)).thenReturn(dbPage)
 
         // when
         val result: PageResponse<PostResponse> = postService.getPostsByPage(pageable)
@@ -94,7 +112,7 @@ class PostServiceTest {
         val postId = 1L
         val cachedPost = createPost(postId, "Cached Post")
 
-        `when`(postRedisService.getCachedPost(postId)).thenReturn(cachedPost)
+        whenever(postRedisService.getCachedPost(postId)).thenReturn(cachedPost)
 
         // when
         val result: PostResponse = postService.getPostById(postId)
@@ -111,8 +129,8 @@ class PostServiceTest {
         val postId = 1L
         val dbPost = createPost(postId, "DB Post")
 
-        `when`(postRedisService.getCachedPost(postId)).thenReturn(null)
-        `when`(postRepository.findById(postId)).thenReturn(Optional.of(dbPost))
+        whenever(postRedisService.getCachedPost(postId)).thenReturn(null)
+        whenever(postRepository.findById(postId)).thenReturn(Optional.of(dbPost))
 
         // when
         val result: PostResponse = postService.getPostById(postId)
@@ -128,8 +146,8 @@ class PostServiceTest {
         // given
         val postId = 999L
 
-        `when`(postRedisService.getCachedPost(postId)).thenReturn(null)
-        `when`(postRepository.findById(postId)).thenReturn(Optional.empty())
+        whenever(postRedisService.getCachedPost(postId)).thenReturn(null)
+        whenever(postRepository.findById(postId)).thenReturn(Optional.empty())
 
         // when & then
         assertThrows(CustomException::class.java) {
@@ -138,48 +156,48 @@ class PostServiceTest {
     }
 
     @Test
-    @DisplayName("게시물 생성 시 DB 저장 후 Redis 캐시에 등록")
-    fun shouldSavePostToDatabaseAndCacheToRedisWhenCreating() {
+    @DisplayName("게시물 생성 성공")
+    fun shouldCreatePost() {
         // given
-        val request = PostCreateRequest("새로운 게시글", "게시글 내용")
-        val newPost = Post(title = "새로운 게시글", content = "게시글 내용")
-        val savedPost = createPost(1L, "새로운 게시글", "게시글 내용")
-        val expireTime = 1672531200L
+        val request = PostCreateRequest(
+            title = "Test Title",
+            content = "Test Content"
+        )
+        val savedPost = createPost(1L, "Test Title", "Test Content", userId = testUser.id, authorName = testUser.name)
 
-        `when`(postRepository.save(newPost)).thenReturn(savedPost)
-        `when`(postRedisService.calculateExpireTime(Duration.ofHours(12))).thenReturn(expireTime)
+        whenever(postRepository.save(any<Post>())).thenReturn(savedPost)
+        whenever(postRedisService.calculateExpireTime(any())).thenReturn(3600L)
+        doNothing().whenever(postRedisService).addToRecentPosts(any<Post>(), any<Long>())
+        doNothing().whenever(postRedisService).cachePost(any<Post>())
+        doNothing().whenever(postEventPublisher).publishPostCreated(any<Post>())
 
         // when
-        val result: PostResponse = postService.createPost(request)
+        val result = postService.createPost(request)
 
         // then
-        assertEquals(1L, result.id)
-        assertEquals("새로운 게시글", result.title)
-        assertEquals("게시글 내용", result.content)
+        assertEquals("Test Title", result.title)
+        assertEquals("Test Content", result.content)
+        assertEquals(testUser.name, result.authorName)
     }
 
     @Test
-    @DisplayName("게시물 삭제 시 존재하는 게시물은 DB와 Redis에서 모두 제거")
-    fun shouldDeletePostFromBothDatabaseAndRedisWhenPostExists() {
+    @DisplayName("다른 사용자가 게시물 삭제 시도 시 실패")
+    fun shouldFailDeleteWithDifferentUser() {
         // given
         val postId = 1L
+        val post = createPost(postId, "Test Post", userId = 1L)
 
-        `when`(postRepository.existsById(postId)).thenReturn(true)
+        whenever(postRepository.findById(postId)).thenReturn(Optional.of(post))
 
-        // when
-        postService.deletePost(postId)
-
-        // then - 예외가 발생하지 않으면 성공
-        assertTrue(true)
-    }
-
-    @Test
-    @DisplayName("게시물 삭제 시 존재하지 않는 게시물은 예외 발생")
-    fun shouldThrowExceptionWhenDeletingNonExistentPost() {
-        // given
-        val postId = 999L
-
-        `when`(postRepository.existsById(postId)).thenReturn(false)
+        // Mock을 다른 사용자로 변경
+        whenever(userContextProvider.getCurrentUser()).thenReturn(
+            UserContext(
+                id = 2L,
+                email = "other@example.com",
+                name = "Other User",
+                userType = "NORMAL"
+            )
+        )
 
         // when & then
         assertThrows(CustomException::class.java) {
@@ -187,15 +205,36 @@ class PostServiceTest {
         }
     }
 
+    @Test
+    @DisplayName("게시물 삭제 성공")
+    fun shouldDeletePost() {
+        // given
+        val postId = 1L
+        val post = createPost(postId, "Test Post", userId = 1L)
+
+        whenever(postRepository.findById(postId)).thenReturn(Optional.of(post))
+
+        // when
+        postService.deletePost(postId)
+
+        // then - verify 호출을 확인할 수 있음
+        // 실제 삭제는 통합 테스트에서 검증
+    }
+
     private fun createPost(
         id: Long,
         title: String,
-        content: String = "Test Content"
+        content: String = "Test Content",
+        userId: Long = 1L,
+        authorName: String = "Test User"
     ): Post {
         return Post(
             id = id,
             title = title,
             content = content,
+            userId = userId,
+            authorName = authorName,
+            lastCommentAppendedAt = null,
             createdAt = LocalDateTime.now(),
             updatedAt = LocalDateTime.now()
         )

@@ -1,5 +1,6 @@
 package msa.post.service
 
+import msa.common.auth.UserContextProvider
 import msa.common.dto.PageResponse
 import msa.common.exception.CustomException
 import msa.common.exception.ErrorCode
@@ -17,7 +18,8 @@ import java.time.Duration
 class PostService(
     private val postRepository: PostRepository,
     private val postRedisService: PostRedisService,
-    private val postEventPublisher: PostEventPublisher
+    private val postEventPublisher: PostEventPublisher,
+    private val userContextProvider: UserContextProvider
 ) {
     private val recentPostRemainHours: Long = 12
 
@@ -77,9 +79,13 @@ class PostService(
 
     @Transactional
     fun createPost(request: PostCreateRequest): PostResponse {
+        val currentUser = userContextProvider.getCurrentUser()
+
         val post = Post(
             title = request.title,
-            content = request.content
+            content = request.content,
+            userId = currentUser.id,
+            authorName = currentUser.name
         )
         val savedPost = postRepository.save(post)
         val expireTime = postRedisService.calculateExpireTime(Duration.ofHours(recentPostRemainHours))
@@ -95,8 +101,14 @@ class PostService(
 
     @Transactional
     fun deletePost(id: Long) {
-        if (!postRepository.existsById(id)) {
-            throw CustomException(ErrorCode.POST_NOT_FOUND)
+        val currentUser = userContextProvider.getCurrentUser()
+
+        val post = postRepository.findById(id)
+            .orElseThrow { CustomException(ErrorCode.POST_NOT_FOUND) }
+
+        // 작성자 권한 검증
+        if (post.userId != currentUser.id) {
+            throw CustomException(ErrorCode.POST_ACCESS_DENIED)
         }
 
         // 캐시 갱신 로직 추가

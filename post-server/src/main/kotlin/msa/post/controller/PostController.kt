@@ -10,7 +10,7 @@ import org.springframework.data.web.PageableDefault
 import org.springframework.web.bind.annotation.*
 
 @RestController
-@RequestMapping("/api/posts")
+@RequestMapping("/posts")
 class PostController(
     private val postService: PostService,
 ) {
