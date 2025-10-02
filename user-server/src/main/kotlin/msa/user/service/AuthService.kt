@@ -26,6 +26,7 @@ class AuthService(
     private val jwtService: JwtService,
     private val emailService: EmailService,
     private val authenticationManager: AuthenticationManager,
+    private val tokenRedisService: TokenRedisService,
     @Value("\${verification.code.expiration}")
     private val verificationCodeExpiration: Long
 ) {
@@ -111,6 +112,10 @@ class AuthService(
 
         // JWT 토큰 생성
         val token = jwtService.generateToken(savedUser)
+
+        // Redis에 토큰 저장
+        tokenRedisService.storeToken(savedUser.id, token)
+
         val userInfo = UserInfo(
             id = savedUser.id,
             email = savedUser.email,
@@ -137,6 +142,10 @@ class AuthService(
             .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
 
         val token = jwtService.generateToken(user)
+
+        // Redis에 토큰 저장
+        tokenRedisService.storeToken(user.id, token)
+
         val userInfo = UserInfo(
             id = user.id,
             email = user.email,

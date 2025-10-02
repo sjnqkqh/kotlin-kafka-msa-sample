@@ -48,6 +48,9 @@ class AuthServiceTest {
     @Mock
     private lateinit var authenticationManager: AuthenticationManager
 
+    @Mock
+    private lateinit var tokenRedisService: TokenRedisService
+
     private lateinit var authService: AuthService
     private val verificationCodeExpiration = 300000L // 5분
 
@@ -60,7 +63,8 @@ class AuthServiceTest {
             jwtService = jwtService,
             emailService = emailService,
             authenticationManager = authenticationManager,
-            verificationCodeExpiration = verificationCodeExpiration
+            verificationCodeExpiration = verificationCodeExpiration,
+            tokenRedisService = tokenRedisService
         )
     }
 
