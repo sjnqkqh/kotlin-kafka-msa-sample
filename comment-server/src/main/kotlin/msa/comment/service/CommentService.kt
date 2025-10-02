@@ -5,7 +5,7 @@ import msa.comment.dto.CommentResponse
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.model.Comment
 import msa.comment.repository.CommentRepository
-import msa.common.auth.UserContextProvider
+import msa.common.auth.UserContext
 import msa.common.exception.CustomException
 import msa.common.exception.ErrorCode
 import org.springframework.stereotype.Service
@@ -16,13 +16,10 @@ import org.springframework.transaction.annotation.Transactional
 class CommentService(
     private val commentRepository: CommentRepository,
     private val commentRedisService: CommentRedisService,
-    private val commentEventPublisher: CommentEventPublisher,
-    private val userContextProvider: UserContextProvider
+    private val commentEventPublisher: CommentEventPublisher
 ) {
 
-    fun createComment(request: CommentCreateRequest): CommentResponse {
-        val currentUser = userContextProvider.getCurrentUser()
-
+    fun createComment(currentUser: UserContext, request: CommentCreateRequest): CommentResponse {
         val comment = Comment(
             postId = request.postId,
             userId = currentUser.id,
@@ -38,9 +35,7 @@ class CommentService(
         return CommentResponse.from(savedComment)
     }
 
-    fun updateComment(commentId: Long, request: CommentUpdateRequest): CommentResponse {
-        val currentUser = userContextProvider.getCurrentUser()
-
+    fun updateComment(commentId: Long, currentUser: UserContext, request: CommentUpdateRequest): CommentResponse {
         val comment = commentRepository.findById(commentId)
             .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
 
@@ -58,9 +53,7 @@ class CommentService(
         return CommentResponse.from(updatedComment)
     }
 
-    fun deleteComment(commentId: Long) {
-        val currentUser = userContextProvider.getCurrentUser()
-
+    fun deleteComment(commentId: Long, currentUser: UserContext) {
         val comment = commentRepository.findById(commentId)
             .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
 

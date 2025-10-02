@@ -1,5 +1,6 @@
 package msa.post.controller
 
+import msa.common.auth.UserContextProvider
 import msa.common.dto.ApiResponse
 import msa.common.dto.PageResponse
 import msa.post.dto.PostCreateRequest
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.*
 @RequestMapping("/posts")
 class PostController(
     private val postService: PostService,
+    private val userContextProvider: UserContextProvider
 ) {
 
     @GetMapping("")
@@ -31,13 +33,15 @@ class PostController(
 
     @PostMapping("")
     fun addPost(@RequestBody request: PostCreateRequest): ApiResponse<PostResponse> {
-        val createdPost = postService.createPost(request)
+        val currentUser = userContextProvider.getCurrentUser()
+        val createdPost = postService.createPost(currentUser, request)
         return ApiResponse.success(createdPost)
     }
 
     @DeleteMapping("/{id}")
     fun removePost(@PathVariable id: Long): ApiResponse<Unit> {
-        postService.deletePost(id)
+        val currentUser = userContextProvider.getCurrentUser()
+        postService.deletePost(currentUser, id)
         return ApiResponse.success()
     }
 }

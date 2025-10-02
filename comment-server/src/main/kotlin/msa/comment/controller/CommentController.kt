@@ -4,18 +4,21 @@ import msa.comment.dto.CommentCreateRequest
 import msa.comment.dto.CommentResponse
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.service.CommentService
+import msa.common.auth.UserContextProvider
 import msa.common.dto.ApiResponse
 import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api")
 class CommentController(
-    private val commentService: CommentService
+    private val commentService: CommentService,
+    private val userContextProvider: UserContextProvider
 ) {
 
     @PostMapping("/comments")
     fun createComment(@RequestBody request: CommentCreateRequest): ApiResponse<CommentResponse> {
-        val comment = commentService.createComment(request)
+        val currentUser = userContextProvider.getCurrentUser()
+        val comment = commentService.createComment(currentUser, request)
         return ApiResponse.success(comment)
     }
 
@@ -24,13 +27,15 @@ class CommentController(
         @PathVariable id: Long,
         @RequestBody request: CommentUpdateRequest
     ): ApiResponse<CommentResponse> {
-        val comment = commentService.updateComment(id, request)
+        val currentUser = userContextProvider.getCurrentUser()
+        val comment = commentService.updateComment(id, currentUser, request)
         return ApiResponse.success(comment)
     }
 
     @DeleteMapping("/comments/{id}")
     fun deleteComment(@PathVariable id: Long): ApiResponse<Unit> {
-        commentService.deleteComment(id)
+        val currentUser = userContextProvider.getCurrentUser()
+        commentService.deleteComment(id, currentUser)
         return ApiResponse.success()
     }
 
