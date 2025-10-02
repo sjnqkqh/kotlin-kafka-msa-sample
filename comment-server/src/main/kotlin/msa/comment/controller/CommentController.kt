@@ -1,7 +1,6 @@
 package msa.comment.controller
 
 import msa.comment.dto.CommentCreateRequest
-import msa.comment.dto.CommentDeleteRequest
 import msa.comment.dto.CommentResponse
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.service.CommentService
@@ -30,11 +29,8 @@ class CommentController(
     }
 
     @DeleteMapping("/comments/{id}")
-    fun deleteComment(
-        @PathVariable id: Long,
-        @RequestBody request: CommentDeleteRequest
-    ): ApiResponse<Unit> {
-        commentService.deleteComment(id, request.password)
+    fun deleteComment(@PathVariable id: Long): ApiResponse<Unit> {
+        commentService.deleteComment(id)
         return ApiResponse.success()
     }
 

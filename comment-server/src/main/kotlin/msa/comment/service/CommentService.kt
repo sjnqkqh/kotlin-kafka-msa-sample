@@ -5,6 +5,7 @@ import msa.comment.dto.CommentResponse
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.model.Comment
 import msa.comment.repository.CommentRepository
+import msa.common.auth.UserContextProvider
 import msa.common.exception.CustomException
 import msa.common.exception.ErrorCode
 import org.springframework.stereotype.Service
@@ -15,14 +16,17 @@ import org.springframework.transaction.annotation.Transactional
 class CommentService(
     private val commentRepository: CommentRepository,
     private val commentRedisService: CommentRedisService,
-    private val commentEventPublisher: CommentEventPublisher
+    private val commentEventPublisher: CommentEventPublisher,
+    private val userContextProvider: UserContextProvider
 ) {
 
     fun createComment(request: CommentCreateRequest): CommentResponse {
+        val currentUser = userContextProvider.getCurrentUser()
+
         val comment = Comment(
             postId = request.postId,
-            author = request.author,
-            password = request.password,
+            userId = currentUser.id,
+            authorName = currentUser.name,
             content = request.content
         )
 
@@ -35,11 +39,14 @@ class CommentService(
     }
 
     fun updateComment(commentId: Long, request: CommentUpdateRequest): CommentResponse {
+        val currentUser = userContextProvider.getCurrentUser()
+
         val comment = commentRepository.findById(commentId)
             .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
 
-        if (comment.password != request.password) {
-            throw CustomException(ErrorCode.INVALID_COMMENT_PASSWORD)
+        // 작성자 권한 검증
+        if (comment.userId != currentUser.id) {
+            throw CustomException(ErrorCode.COMMENT_ACCESS_DENIED)
         }
 
         comment.content = request.content
@@ -51,12 +58,15 @@ class CommentService(
         return CommentResponse.from(updatedComment)
     }
 
-    fun deleteComment(commentId: Long, password: String) {
+    fun deleteComment(commentId: Long) {
+        val currentUser = userContextProvider.getCurrentUser()
+
         val comment = commentRepository.findById(commentId)
             .orElseThrow { CustomException(ErrorCode.COMMENT_NOT_FOUND) }
 
-        if (comment.password != password) {
-            throw CustomException(ErrorCode.INVALID_COMMENT_PASSWORD)
+        // 작성자 권한 검증
+        if (comment.userId != currentUser.id) {
+            throw CustomException(ErrorCode.COMMENT_ACCESS_DENIED)
         }
 
         commentRepository.delete(comment)

@@ -4,11 +4,15 @@ import msa.comment.config.TestConfig
 import msa.comment.dto.CommentCreateRequest
 import msa.comment.dto.CommentUpdateRequest
 import msa.comment.repository.CommentRepository
+import msa.common.auth.UserContext
+import msa.common.auth.UserContextProvider
 import msa.common.exception.CustomException
+import msa.common.exception.ErrorCode
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertThrows
 import org.junit.jupiter.api.DisplayName
 import org.junit.jupiter.api.Test
+import org.mockito.kotlin.whenever
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.context.annotation.Import
@@ -26,14 +30,29 @@ class CommentServiceTest {
     @Autowired
     private lateinit var commentRepository: CommentRepository
 
+    @Autowired
+    private lateinit var userContextProvider: UserContextProvider
+
+    private val defaultUser = UserContext(
+        id = 1L,
+        email = "test@example.com",
+        name = "Test User",
+        userType = "NORMAL"
+    )
+
+    @org.junit.jupiter.api.BeforeEach
+    fun setUp() {
+        // 각 테스트 전에 기본 사용자로 리셋
+        whenever(userContextProvider.getCurrentUser()).thenReturn(defaultUser)
+        whenever(userContextProvider.getCurrentUserOrNull()).thenReturn(defaultUser)
+    }
+
     @Test
     @DisplayName("댓글 생성 성공")
     fun shouldCreateComment() {
         // Given
         val request = CommentCreateRequest(
             postId = 1L,
-            author = "작성자",
-            password = "1234",
             content = "댓글 내용"
         )
 
@@ -42,7 +61,6 @@ class CommentServiceTest {
 
         // Then
         assertEquals(1L, response.postId)
-        assertEquals("작성자", response.author)
         assertEquals("댓글 내용", response.content)
     }
 
@@ -52,14 +70,11 @@ class CommentServiceTest {
         // Given
         val createRequest = CommentCreateRequest(
             postId = 1L,
-            author = "작성자",
-            password = "1234",
             content = "원본"
         )
         val createdComment = commentService.createComment(createRequest)
 
         val updateRequest = CommentUpdateRequest(
-            password = "1234",
             content = "수정됨"
         )
 
@@ -71,26 +86,34 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("잘못된 비밀번호로 수정 시 실패")
-    fun shouldFailUpdateWithWrongPassword() {
-        // Given
+    @DisplayName("다른 사용자가 댓글 수정 시도 시 실패")
+    fun shouldFailUpdateWithDifferentUser() {
+        // Given - 첫 번째 사용자로 댓글 생성
         val createRequest = CommentCreateRequest(
             postId = 1L,
-            author = "작성자",
-            password = "1234",
             content = "원본"
         )
         val createdComment = commentService.createComment(createRequest)
 
+        // Mock을 다른 사용자로 변경
+        whenever(userContextProvider.getCurrentUser()).thenReturn(
+            UserContext(
+                id = 2L, // 다른 사용자 ID
+                email = "other@example.com",
+                name = "Other User",
+                userType = "NORMAL"
+            )
+        )
+
         val updateRequest = CommentUpdateRequest(
-            password = "틀림",
             content = "수정됨"
         )
 
         // When & Then
-        assertThrows(CustomException::class.java) {
+        val exception = assertThrows(CustomException::class.java) {
             commentService.updateComment(createdComment.id, updateRequest)
         }
+        assertEquals(ErrorCode.COMMENT_ACCESS_DENIED, exception.errorCode)
     }
 
     @Test
@@ -99,14 +122,12 @@ class CommentServiceTest {
         // Given
         val createRequest = CommentCreateRequest(
             postId = 1L,
-            author = "작성자",
-            password = "1234",
             content = "삭제대상"
         )
         val createdComment = commentService.createComment(createRequest)
 
         // When
-        commentService.deleteComment(createdComment.id, "1234")
+        commentService.deleteComment(createdComment.id)
 
         // Then
         val exists = commentRepository.existsById(createdComment.id)
@@ -114,21 +135,30 @@ class CommentServiceTest {
     }
 
     @Test
-    @DisplayName("잘못된 비밀번호로 삭제 시 실패")
-    fun shouldFailDeleteWithWrongPassword() {
-        // Given
+    @DisplayName("다른 사용자가 댓글 삭제 시도 시 실패")
+    fun shouldFailDeleteWithDifferentUser() {
+        // Given - 첫 번째 사용자로 댓글 생성
         val createRequest = CommentCreateRequest(
             postId = 1L,
-            author = "작성자",
-            password = "1234",
             content = "삭제대상"
         )
         val createdComment = commentService.createComment(createRequest)
 
+        // Mock을 다른 사용자로 변경
+        whenever(userContextProvider.getCurrentUser()).thenReturn(
+            UserContext(
+                id = 2L, // 다른 사용자 ID
+                email = "other@example.com",
+                name = "Other User",
+                userType = "NORMAL"
+            )
+        )
+
         // When & Then
-        assertThrows(CustomException::class.java) {
-            commentService.deleteComment(createdComment.id, "틀림")
+        val exception = assertThrows(CustomException::class.java) {
+            commentService.deleteComment(createdComment.id)
         }
+        assertEquals(ErrorCode.COMMENT_ACCESS_DENIED, exception.errorCode)
     }
 
     @Test
@@ -137,10 +167,10 @@ class CommentServiceTest {
         // Given
         val postId = 1L
         commentService.createComment(
-            CommentCreateRequest(postId, "작성자A", "1234", "첫번째")
+            CommentCreateRequest(postId, "첫번째")
         )
         commentService.createComment(
-            CommentCreateRequest(postId, "작성자B", "1234", "두번째")
+            CommentCreateRequest(postId, "두번째")
         )
 
         // When

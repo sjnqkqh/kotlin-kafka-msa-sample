@@ -35,6 +35,11 @@ spring:
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
     bootstrap-servers: localhost:9999  # 존재하지 않는 포트로 설정
 
+# JWT 설정 (테스트용 더미 값)
+jwt:
+  secret: test-secret-key-for-jwt-token-validation-in-testing-environment-should-be-long-enough
+  expiration: 86400000
+
 logging:
   level:
     org.springframework.kafka: WARN

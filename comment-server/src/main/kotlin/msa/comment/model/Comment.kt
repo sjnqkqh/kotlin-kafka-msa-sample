@@ -27,11 +27,11 @@ data class Comment(
     @Column(nullable = false, name = "post_id")
     val postId: Long,
 
-    @Column(nullable = false, length = 100)
-    val author: String,
+    @Column(nullable = false, name = "user_id")
+    val userId: Long,
 
-    @Column(nullable = false, length = 100)
-    val password: String,
+    @Column(nullable = false, length = 100, name = "author_name")
+    val authorName: String,
 
     @Column(nullable = false, columnDefinition = "TEXT")
     var content: String,

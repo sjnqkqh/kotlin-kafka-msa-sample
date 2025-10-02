@@ -17,7 +17,7 @@ class CommentEventPublisher(
             val event = CommentCreatedEvent(
                 commentId = comment.id!!,
                 postId = comment.postId,
-                author = comment.author,
+                author = comment.authorName,
                 content = comment.content,
                 createdAt = comment.createdAt!!
             )
