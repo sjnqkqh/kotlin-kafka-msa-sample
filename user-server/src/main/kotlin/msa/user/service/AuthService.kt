@@ -2,7 +2,8 @@ package msa.user.service
 
 import msa.common.exception.CustomException
 import msa.common.exception.ErrorCode
-import msa.user.dto.*
+import msa.user.dto.AuthResponse
+import msa.user.dto.UserInfo
 import msa.user.model.User
 import msa.user.model.UserType
 import msa.user.model.VerificationCode
@@ -32,21 +33,21 @@ class AuthService(
 ) {
 
     @Transactional
-    fun sendSignupVerificationCode(request: SendVerificationCodeRequest) {
-        if (userRepository.existsByEmail(request.email)) {
+    fun sendSignupVerificationCode(email: String) {
+        if (userRepository.existsByEmail(email)) {
             throw CustomException(ErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
-        sendVerificationCodeInternal(request.email, VerificationType.SIGNUP)
+        sendVerificationCodeInternal(email, VerificationType.SIGNUP)
     }
 
     @Transactional
-    fun sendPasswordResetVerificationCode(request: SendVerificationCodeRequest) {
-        if (!userRepository.existsByEmail(request.email)) {
+    fun sendPasswordResetVerificationCode(email: String) {
+        if (!userRepository.existsByEmail(email)) {
             throw CustomException(ErrorCode.USER_NOT_FOUND)
         }
 
-        sendVerificationCodeInternal(request.email, VerificationType.PASSWORD_RESET)
+        sendVerificationCodeInternal(email, VerificationType.PASSWORD_RESET)
     }
 
     private fun sendVerificationCodeInternal(email: String, type: VerificationType) {
@@ -70,9 +71,9 @@ class AuthService(
         emailService.sendVerificationCode(email, code, type.name)
     }
 
-    fun verifyCode(request: VerifyCodeRequest, type: VerificationType) {
+    fun verifyCode(email: String, code: String, type: VerificationType) {
         val verificationCode = verificationCodeRepository.findByEmailAndCodeAndType(
-            request.email, request.code, type
+            email, code, type
         ).orElse(null)
 
         if (verificationCode == null || !verificationCode.isValid()) {
@@ -81,26 +82,31 @@ class AuthService(
     }
 
     @Transactional
-    fun signup(request: SignupRequest): AuthResponse {
+    fun signup(
+        email: String,
+        password: String,
+        name: String,
+        verificationCode: String
+    ): AuthResponse {
         // 이메일 중복 체크
-        if (userRepository.existsByEmail(request.email)) {
+        if (userRepository.existsByEmail(email)) {
             throw CustomException(ErrorCode.EMAIL_ALREADY_EXISTS)
         }
 
         // 인증번호 검증
-        val verificationCode = verificationCodeRepository.findByEmailAndCodeAndType(
-            request.email, request.verificationCode, VerificationType.SIGNUP
+        val storedVerificationCode = verificationCodeRepository.findByEmailAndCodeAndType(
+            email, verificationCode, VerificationType.SIGNUP
         ).orElse(null)
 
-        if (verificationCode == null || !verificationCode.isValid()) {
+        if (storedVerificationCode == null || !storedVerificationCode.isValid()) {
             throw CustomException(ErrorCode.INVALID_VERIFICATION_CODE)
         }
 
         // 사용자 생성
         val user = User(
-            email = request.email,
-            password = passwordEncoder.encode(request.password),
-            name = request.name,
+            email = email,
+            password = passwordEncoder.encode(password),
+            name = name,
             userType = UserType.NORMAL,
             isEmailVerified = true
         )
@@ -108,7 +114,7 @@ class AuthService(
         val savedUser = userRepository.save(user)
 
         // 인증번호 사용 처리
-        verificationCodeRepository.save(verificationCode.copy(isUsed = true))
+        verificationCodeRepository.save(storedVerificationCode.copy(isUsed = true))
 
         // JWT 토큰 생성
         val token = jwtService.generateToken(savedUser)
@@ -129,16 +135,16 @@ class AuthService(
         )
     }
 
-    fun login(request: LoginRequest): AuthResponse {
+    fun login(email: String, password: String): AuthResponse {
         try {
             authenticationManager.authenticate(
-                UsernamePasswordAuthenticationToken(request.email, request.password)
+                UsernamePasswordAuthenticationToken(email, password)
             )
         } catch (_: Exception) {
             throw CustomException(ErrorCode.LOGIN_FAILED)
         }
 
-        val user = userRepository.findByEmail(request.email)
+        val user = userRepository.findByEmail(email)
             .orElseThrow { CustomException(ErrorCode.USER_NOT_FOUND) }
 
         val token = jwtService.generateToken(user)
@@ -160,29 +166,33 @@ class AuthService(
     }
 
     @Transactional
-    fun resetPassword(request: ResetPasswordRequest) {
+    fun resetPassword(
+        email: String,
+        newPassword: String,
+        verificationCode: String
+    ) {
         // 사용자 존재 확인
-        val user = userRepository.findByEmail(request.email).orElse(null)
+        val user = userRepository.findByEmail(email).orElse(null)
             ?: throw CustomException(ErrorCode.USER_NOT_FOUND)
 
         // 인증번호 검증
-        val verificationCode = verificationCodeRepository.findByEmailAndCodeAndType(
-            request.email, request.verificationCode, VerificationType.PASSWORD_RESET
+        val storedVerificationCode = verificationCodeRepository.findByEmailAndCodeAndType(
+            email, verificationCode, VerificationType.PASSWORD_RESET
         ).orElse(null)
 
-        if (verificationCode == null || !verificationCode.isValid()) {
+        if (storedVerificationCode == null || !storedVerificationCode.isValid()) {
             throw CustomException(ErrorCode.INVALID_VERIFICATION_CODE)
         }
 
         // 비밀번호 업데이트
         val updatedUser = user.copy(
-            password = passwordEncoder.encode(request.newPassword),
+            password = passwordEncoder.encode(newPassword),
             updatedAt = LocalDateTime.now()
         )
         userRepository.save(updatedUser)
 
         // 인증번호 사용 처리
-        verificationCodeRepository.save(verificationCode.copy(isUsed = true))
+        verificationCodeRepository.save(storedVerificationCode.copy(isUsed = true))
     }
 
 }

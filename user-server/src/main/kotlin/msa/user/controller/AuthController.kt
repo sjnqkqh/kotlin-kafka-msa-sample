@@ -18,43 +18,55 @@ class AuthController(
 
     @PostMapping("/send-verification-code")
     fun sendSignupVerificationCode(@Valid @RequestBody request: SendVerificationCodeRequest): ApiResponse<Unit> {
-        authService.sendSignupVerificationCode(request)
+        authService.sendSignupVerificationCode(request.email)
         return ApiResponse.success()
     }
 
     @PostMapping("/send-password-reset-code")
     fun sendPasswordResetVerificationCode(@Valid @RequestBody request: SendVerificationCodeRequest): ApiResponse<Unit> {
-        authService.sendPasswordResetVerificationCode(request)
+        authService.sendPasswordResetVerificationCode(request.email)
         return ApiResponse.success()
     }
 
     @PostMapping("/verify-code")
     fun verifySignupCode(@Valid @RequestBody request: VerifyCodeRequest): ApiResponse<Unit> {
-        authService.verifyCode(request, VerificationType.SIGNUP)
+        authService.verifyCode(request.email, request.code, VerificationType.SIGNUP)
         return ApiResponse.success()
     }
 
     @PostMapping("/verify-password-reset-code")
     fun verifyPasswordResetCode(@Valid @RequestBody request: VerifyCodeRequest): ApiResponse<Unit> {
-        authService.verifyCode(request, VerificationType.PASSWORD_RESET)
+        authService.verifyCode(request.email, request.code, VerificationType.PASSWORD_RESET)
         return ApiResponse.success()
     }
 
     @PostMapping("/signup")
     fun signup(@Valid @RequestBody request: SignupRequest): ApiResponse<AuthResponse> {
-        val authResponse = authService.signup(request)
+        val authResponse = authService.signup(
+            email = request.email,
+            password = request.password,
+            name = request.name,
+            verificationCode = request.verificationCode
+        )
         return ApiResponse.success(authResponse)
     }
 
     @PostMapping("/login")
     fun login(@Valid @RequestBody request: LoginRequest): ApiResponse<AuthResponse> {
-        val authResponse = authService.login(request)
+        val authResponse = authService.login(
+            email = request.email,
+            password = request.password
+        )
         return ApiResponse.success(authResponse)
     }
 
     @PostMapping("/reset-password")
     fun resetPassword(@Valid @RequestBody request: ResetPasswordRequest): ApiResponse<Unit> {
-        authService.resetPassword(request)
+        authService.resetPassword(
+            email = request.email,
+            newPassword = request.newPassword,
+            verificationCode = request.verificationCode
+        )
         return ApiResponse.success()
     }
 }

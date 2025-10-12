@@ -2,7 +2,6 @@ package msa.user.service
 
 import msa.common.exception.CustomException
 import msa.common.exception.ErrorCode
-import msa.user.dto.*
 import msa.user.model.User
 import msa.user.model.UserType
 import msa.user.model.VerificationCode
@@ -73,14 +72,13 @@ class AuthServiceTest {
     fun sendSignupVerificationCode_Success() {
         // Given
         val email = "test@example.com"
-        val request = SendVerificationCodeRequest(email)
         val verificationCode = "123456"
 
         whenever(userRepository.existsByEmail(email)).thenReturn(false)
         whenever(emailService.generateVerificationCode()).thenReturn(verificationCode)
 
         // When & Then - should not throw exception
-        authService.sendSignupVerificationCode(request)
+        authService.sendSignupVerificationCode(email)
 
         verify(verificationCodeRepository).deleteByEmailAndType(email, VerificationType.SIGNUP)
         verify(verificationCodeRepository).save(any<VerificationCode>())
@@ -92,13 +90,12 @@ class AuthServiceTest {
     fun sendSignupVerificationCode_EmailAlreadyExists() {
         // Given
         val email = "existing@example.com"
-        val request = SendVerificationCodeRequest(email)
 
         whenever(userRepository.existsByEmail(email)).thenReturn(true)
 
         // When & Then
         val exception = assertThrows<CustomException> {
-            authService.sendSignupVerificationCode(request)
+            authService.sendSignupVerificationCode(email)
         }
 
         assertEquals(ErrorCode.EMAIL_ALREADY_EXISTS, exception.errorCode)
@@ -111,14 +108,13 @@ class AuthServiceTest {
     fun sendPasswordResetVerificationCode_Success() {
         // Given
         val email = "user@example.com"
-        val request = SendVerificationCodeRequest(email)
         val verificationCode = "123456"
 
         whenever(userRepository.existsByEmail(email)).thenReturn(true)
         whenever(emailService.generateVerificationCode()).thenReturn(verificationCode)
 
         // When & Then - should not throw exception
-        authService.sendPasswordResetVerificationCode(request)
+        authService.sendPasswordResetVerificationCode(email)
 
         verify(verificationCodeRepository).deleteByEmailAndType(email, VerificationType.PASSWORD_RESET)
         verify(verificationCodeRepository).save(any<VerificationCode>())
@@ -130,13 +126,12 @@ class AuthServiceTest {
     fun sendPasswordResetVerificationCode_EmailNotFound() {
         // Given
         val email = "notfound@example.com"
-        val request = SendVerificationCodeRequest(email)
 
         whenever(userRepository.existsByEmail(email)).thenReturn(false)
 
         // When & Then
         val exception = assertThrows<CustomException> {
-            authService.sendPasswordResetVerificationCode(request)
+            authService.sendPasswordResetVerificationCode(email)
         }
 
         assertEquals(ErrorCode.USER_NOT_FOUND, exception.errorCode)
@@ -150,7 +145,6 @@ class AuthServiceTest {
         // Given
         val email = "test@example.com"
         val code = "123456"
-        val request = VerifyCodeRequest(email, code)
         val verificationCode = VerificationCode(
             email = email,
             code = code,
@@ -162,7 +156,7 @@ class AuthServiceTest {
             .thenReturn(Optional.of(verificationCode))
 
         // When & Then - should not throw exception
-        authService.verifyCode(request, VerificationType.SIGNUP)
+        authService.verifyCode(email, code, VerificationType.SIGNUP)
     }
 
     @Test
@@ -171,14 +165,13 @@ class AuthServiceTest {
         // Given
         val email = "test@example.com"
         val code = "wrong-code"
-        val request = VerifyCodeRequest(email, code)
 
         whenever(verificationCodeRepository.findByEmailAndCodeAndType(email, code, VerificationType.SIGNUP))
             .thenReturn(Optional.empty())
 
         // When & Then
         val exception = assertThrows<CustomException> {
-            authService.verifyCode(request, VerificationType.SIGNUP)
+            authService.verifyCode(email, code, VerificationType.SIGNUP)
         }
 
         assertEquals(ErrorCode.INVALID_VERIFICATION_CODE, exception.errorCode)
@@ -195,7 +188,6 @@ class AuthServiceTest {
         val encodedPassword = "encoded-password"
         val token = "jwt-token"
 
-        val request = SignupRequest(email, password, name, verificationCodeValue)
         val verificationCode = VerificationCode(
             email = email,
             code = verificationCodeValue,
@@ -219,7 +211,7 @@ class AuthServiceTest {
         whenever(jwtService.generateToken(savedUser)).thenReturn(token)
 
         // When
-        val result = authService.signup(request)
+        val result = authService.signup(email, password, name, verificationCodeValue)
 
         // Then
         assertNotNull(result)
@@ -236,13 +228,12 @@ class AuthServiceTest {
     fun signup_EmailAlreadyExists() {
         // Given
         val email = "existing@example.com"
-        val request = SignupRequest(email, "password123", "User", "123456")
 
         whenever(userRepository.existsByEmail(email)).thenReturn(true)
 
         // When & Then
         val exception = assertThrows<CustomException> {
-            authService.signup(request)
+            authService.signup(email, "password123", "User", "123456")
         }
 
         assertEquals(ErrorCode.EMAIL_ALREADY_EXISTS, exception.errorCode)
@@ -254,7 +245,6 @@ class AuthServiceTest {
     fun signup_InvalidVerificationCode() {
         // Given
         val email = "newuser@example.com"
-        val request = SignupRequest(email, "password123", "User", "invalid-code")
 
         whenever(userRepository.existsByEmail(email)).thenReturn(false)
         whenever(verificationCodeRepository.findByEmailAndCodeAndType(email, "invalid-code", VerificationType.SIGNUP))
@@ -262,7 +252,7 @@ class AuthServiceTest {
 
         // When & Then
         val exception = assertThrows<CustomException> {
-            authService.signup(request)
+            authService.signup(email, "password123", "User", "invalid-code")
         }
 
         assertEquals(ErrorCode.INVALID_VERIFICATION_CODE, exception.errorCode)
@@ -276,7 +266,6 @@ class AuthServiceTest {
         val email = "user@example.com"
         val password = "password123"
         val token = "jwt-token"
-        val request = LoginRequest(email, password)
         val user = User(
             id = 1L,
             email = email,
@@ -292,7 +281,7 @@ class AuthServiceTest {
         whenever(jwtService.generateToken(user)).thenReturn(token)
 
         // When
-        val result = authService.login(request)
+        val result = authService.login(email, password)
 
         // Then
         assertNotNull(result)
@@ -306,14 +295,13 @@ class AuthServiceTest {
         // Given
         val email = "user@example.com"
         val password = "wrongpassword"
-        val request = LoginRequest(email, password)
 
         whenever(authenticationManager.authenticate(any<UsernamePasswordAuthenticationToken>()))
             .thenThrow(BadCredentialsException("Bad credentials"))
 
         // When & Then
         val exception = assertThrows<CustomException> {
-            authService.login(request)
+            authService.login(email, password)
         }
 
         assertEquals(ErrorCode.LOGIN_FAILED, exception.errorCode)
@@ -330,7 +318,6 @@ class AuthServiceTest {
         val verificationCodeValue = "123456"
         val encodedPassword = "encoded-new-password"
 
-        val request = ResetPasswordRequest(email, newPassword, verificationCodeValue)
         val user = User(
             id = 1L,
             email = email,
@@ -352,7 +339,7 @@ class AuthServiceTest {
         whenever(passwordEncoder.encode(newPassword)).thenReturn(encodedPassword)
 
         // When & Then - should not throw exception
-        authService.resetPassword(request)
+        authService.resetPassword(email, newPassword, verificationCodeValue)
 
         val userCaptor = ArgumentCaptor.forClass(User::class.java)
         verify(userRepository).save(userCaptor.capture())
@@ -366,13 +353,12 @@ class AuthServiceTest {
     fun resetPassword_UserNotFound() {
         // Given
         val email = "notfound@example.com"
-        val request = ResetPasswordRequest(email, "newpassword123", "123456")
 
         whenever(userRepository.findByEmail(email)).thenReturn(Optional.empty())
 
         // When & Then
         val exception = assertThrows<CustomException> {
-            authService.resetPassword(request)
+            authService.resetPassword(email, "newpassword123", "123456")
         }
 
         assertEquals(ErrorCode.USER_NOT_FOUND, exception.errorCode)
